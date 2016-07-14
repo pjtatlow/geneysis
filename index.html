@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html ng-app="Geneysis" ng-cloak>
+  <head>
+    <meta charset="UTF-8">
+    <title>Geneysis</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">    
+    <link href="css/geneysis.css" rel="stylesheet">    
+    <link href="css/font-awesome.min.css" rel="stylesheet">    
+  </head>
+  <body ng-view>
+
+  </body>
+
+  <script src="node_modules/angular/angular.min.js"></script>  
+  <script src="js/electangular.js"></script>
+  <script>
+    // You can also require other files to run in this process
+    require('./renderer.js')
+  </script>
+</html>

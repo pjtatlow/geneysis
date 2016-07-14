@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html ng-app="Geneysis" ng-controller="MainController" ng-cloak>
+  <head>
+    <meta charset="UTF-8">
+    <title>Geneysis</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">    
+    <link href="css/geneysis.css" rel="stylesheet">    
+    <link href="css/font-awesome.min.css" rel="stylesheet">    
+    <link href="css/hover.min.css" rel="stylesheet">    
+  </head>
+  <body>
+
+    <div class="select-project">
+      <h3>Select a project:</h3>
+      <h5><small style="color:#eee;">Add new project with <i class="fa fa-plus" aria-hidden="true"></i> at bottom.</small></h5>
+      <hr>
+      <div class="projects">
+
+        <div class="project " ng-repeat="project in projects" ng-click="selectProject(project)">
+          <h5 class="project-name"><strong>{{project.name}}</strong></h5>
+          <h6 class="project-path">{{project.path}}</h6>
+          <button type="button" class="select-project-btn"><i class="fa fa-arrow-circle-right" aria-hidden="true"></i></button>
+        </div>
+
+      </div>
+      <div class="new-project">
+
+        <button class="add-new-project-btn"><i class="fa fa-plus" aria-hidden="true"></i></button>
+      </div>
+    </div>    
+    
+  </body>
+
+  <script src="node_modules/angular/angular.min.js"></script>  
+  <script src="js/electangular.js"></script>
+  <script>
+    "use strict";
+
+    var app = angular.module('Geneysis', [require('angular-animate'), require('angular-ui-bootstrap'), 'electangular']);
+
+    app.controller("MainController", ["$rootScope","$scope","ipc", function($rootScope,$scope, ipc) {
+
+      $scope.projects = [];
+      ipc.send({task:"get_projects"});
+      $rootScope.$on('electron-msg', (event, msg) => {
+        switch(msg.task) {
+            case "projects":
+              $scope.projects = msg.projects;
+              $scope.$apply();
+              console.log($scope.projects);
+              break;
+        }
+
+      });  
+
+      $scope.selectProject = function(proj) {
+        ipc.send({task:"open_project", project:proj });
+      }
+
+    }]);
+
+
+  </script>
+</html>
