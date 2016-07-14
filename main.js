@@ -113,8 +113,12 @@ function startGeneysis () {
           }
         }
         if (missing.length > 0) {
-          dialog.showMessageBox(mainWindow, {type:"error",title:"Missing Dependencies",message:"Please install the following dependencies:",detail:missing,buttons:["OK"]}, function() {
-            mainWindow.close();
+          let open_window = mainWindow;
+          if (open_window == null) {
+            open_window = projectsWindow;
+          }
+          dialog.showMessageBox(null, {type:"error",title:"Missing Dependencies",message:"Please install the following dependencies:",detail:missing,buttons:["OK"]}, function() {
+            open_window.close();
           });
         }
       });
