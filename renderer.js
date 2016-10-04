@@ -16,39 +16,113 @@ app.config(function($routeProvider, $locationProvider) {
   $routeProvider
     .when('/', {
         template: '<div></div>',
-        controller: 'MainController',
+        controller: 'StartController',
     })
-    .when('/home', {
-    templateUrl: './templates/home.html',
-    controller: 'HomeController',
+    .when('/import', {
+    templateUrl: './templates/import.html',
+    controller: 'ImportController',
   })
 });
-app.service("settings", [function() {
+app.service("globalSettings", [function() {
+  var observerCallbacks = [];
+
+  //register an observer
+  var registerObserverCallback = function(callback){
+    observerCallbacks.push(callback);
+  };
+
+  //call this when you know 'foo' has been changed
+  var notifyObservers = function(){
+    angular.forEach(observerCallbacks, function(callback){
+      callback();
+    });
+  };
+  
+  
   return {
-    wd: undefined,
     project: undefined,
-    
+    config: undefined,
+    observerCallbacks: observerCallbacks,
+    registerObserverCallback: registerObserverCallback,
+    notifyObservers: notifyObservers
   }
 }]);
 
-app.controller("MainController", ["$rootScope","$scope","$window","ipc","settings", function($rootScope,$scope, $window,ipc,settings) {
-  ipc.send({task:"get_current_project"});
-  $rootScope.$on('electron-msg', (event, msg) => {
-    if (msg.task == "load_project") {
-      console.log(msg);
+app.controller("MainController", ["$scope","globalSettings","$window", function($scope, globalSettings, $window) {
+  $scope.sidebarOpen = true;
+  $scope.mainWidth = 0;
+  $scope.project = globalSettings.project;
+  $scope.setMainWidth = function() {
+    if ($scope.sidebarOpen) {
+      $scope.mainWidth = $window.innerWidth - 304;
+    }
+    else {
+      $scope.mainWidth = $window.innerWidth;
+    }
+  }
+  $scope.setMainWidth();
+  angular.element($window).bind('resize',function() {
+    $scope.setMainWidth();
+    $scope.$digest();
+  })
+  
+  
+  globalSettings.registerObserverCallback(function() {
+    console.log(globalSettings);
+    $scope.project = globalSettings.project;
+  })
+  
+}]);
+
+app.controller("StartController", ["$rootScope","$scope","$window","ipc","globalSettings", function($rootScope,$scope, $window,ipc,globalSettings) {
+  
+  ipc.send({task:"get_current_project"}); // ask for the current project
+  $rootScope.$on('electron-msg', (event, msg) => { // listen for response
+    if (msg.task == "load_project") { // make sure the message is really for you
+      console.log(msg)
+      globalSettings.project = msg.project;
+      globalSettings.project.created = new Date(globalSettings.project.created);
+      globalSettings.project.updated = new Date(globalSettings.project.updated);
+      if (globalSettings.project.events.length == 0) {
+        $window.location.hash = '#import';
+//        console.log($window.location);
+      }
+      globalSettings.notifyObservers();
     }
     
   });
   
 }]);
 
-app.controller("HomeController", ["$rootScope","$scope","electron","ipc", function($rootScope, $scope, electron, ipc) {
-  
+app.controller("ImportController", ["$rootScope","$scope","electron","ipc","globalSettings","$location", function($rootScope, $scope, electron, ipc, globalSettings,$location) {
+  if (globalSettings.project == undefined) {
+    $location.path("/");
+  }
+  else {
+    $scope.project = globalSettings.project;
+  }
+  console.log("STARTING!");
   $rootScope.$on('electron-msg', (event, msg) => {
     
     switch(msg.task) {
         case "load_genbank":
-          
+          var files = msg.files;
+          for (let i=0;i<files.length;i++) {
+            geneysis.loadPhage($scope.project.path, files[i], function(results, err) {
+              if (err) {
+                console.log(err)
+              }
+              try {
+                globalSettings.project = JSON.parse(results);
+                $scope.project = globalSettings.project;
+                globalSettings.notifyObservers();
+                console.log($scope.project)
+              }
+              catch(error) {
+                console.error(error);
+              }
+            });
+          }
           break;
         
         default:
@@ -57,19 +131,7 @@ app.controller("HomeController", ["$rootScope","$scope","electron","ipc", functi
     }
     
   });
-  
-  $scope.name = "YAY!"
-  
-  $scope.files = []
-  
-  $scope.$watch("files", function() {
-    console.log($scope.files)
-  })
-  
-  $scope.newDir = function() {
-    geneysis.createNewDir("/home/pjtatlow/.geneysis/");
-  }
-  
+    
   $scope.openFiles = function() {
    ipc.send({task:"get_genbank"});
   }

@@ -1,5 +1,6 @@
 from Bio import SeqIO
 import sys, glob, os, sqlite3, subprocess
+import json
 
 
 def mean(x):
@@ -8,6 +9,15 @@ def mean(x):
         total += float(y)
     return total / float(len(x))
 
+def loadProject(wd):
+    project = {}
+    with open("{d}project.json".format(d=wd),'r') as project_json:
+        project = json.load(project_json)   
+    return project
+
+def writeProject(wd,project):
+    with open("{d}project.json".format(d=wd),'w') as project_json:
+        json.dump(project,project_json)  
 
 def connect_db(db_file):
     return sqlite3.connect(db_file)

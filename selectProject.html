@@ -15,19 +15,34 @@
       <h5><small style="color:#eee;">Add new project with <i class="fa fa-plus" aria-hidden="true"></i> at bottom.</small></h5>
       <hr>
       <div class="projects">
-
+        <h5 ng-if="projects.length == 0">Oops! Looks like you don't have any projects!</h5>
         <div class="project " ng-repeat="project in projects" ng-click="selectProject(project)">
           <h5 class="project-name"><strong>{{project.name}}</strong></h5>
-          <h6 class="project-path">{{project.path}}</h6>
+          <h6 class="project-path">Last Updated: {{project.updated.toLocaleString()}}</h6>
           <button type="button" class="select-project-btn"><i class="fa fa-arrow-circle-right" aria-hidden="true"></i></button>
         </div>
 
       </div>
       <div class="new-project">
-
-        <button class="add-new-project-btn"><i class="fa fa-plus" aria-hidden="true"></i></button>
+        <h6>Projects Found: {{projects.length}}</h6>
+        <button class="add-new-project-btn" ng-init="showNewProjectBox = false" ng-click="showNewProjectForm()"><i class="fa fa-plus" aria-hidden="true"></i></button>
       </div>
     </div>    
+    
+    <div class="new-project-background" ng-click="handleNewProjectClick($event)" ng-show="showNewProjectBox">
+      <div class="new-project-box">
+        <form name="newForm">
+          <div class="form-group" ng-cladd="{'has-error':newForm.$invalid,'has-success':newForm.$valid}">
+            <label class="new-project-input-label control-label" for="new-project-input">New Project Name</label>
+            <input name="name" type="text" class="new-project-input" id="new-project-input" ng-init="newProjectName = ''" ng-model="newProjectName" ng-pattern="/^[^\\\/\ ]+$/">
+            <span style="color:#eee;position:relative;font-size:10px;margin-left:10px;top:-10px;" 
+                  class="help-block" ng-if="newForm.$invalid">No spaces or slashes please!</span>
+          </div>
+        </form>
+        <button style="position:absolute;bottom:5px;right:5px;" 
+                class="btn btn-sm btn-success pull-right" ng-disabled="newForm.$invalid || newProjectName.length == 0" ng-click="createProject()">Create and Open</button>
+      </div>
+    </div>
     
   </body>
 
@@ -38,16 +53,36 @@
 
     var app = angular.module('Geneysis', [require('angular-animate'), require('angular-ui-bootstrap'), 'electangular']);
 
+    const geneysis = require('./js/geneysis.js');
+    
     app.controller("MainController", ["$rootScope","$scope","ipc", function($rootScope,$scope, ipc) {
 
       $scope.projects = [];
+      $scope.wd = "";
       ipc.send({task:"get_projects"});
+      
       $rootScope.$on('electron-msg', (event, msg) => {
         switch(msg.task) {
             case "projects":
+              for (let i = 0; i < msg.projects.length; i++) {
+                msg.projects[i].created = new Date(msg.projects[i].created * 1000)
+                msg.projects[i].updated = new Date(msg.projects[i].updated * 1000)                
+              }
+            
+              function compare(a,b) {
+                if (a.updated > b.updated)
+                  return -1;
+                if (a.updated < b.updated)
+                  return 1;
+                return 0;
+              }
+
+              msg.projects.sort(compare);            
+            
+              console.log(msg.projects);
               $scope.projects = msg.projects;
+              $scope.wd = msg.wd;
               $scope.$apply();
-              console.log($scope.projects);
               break;
         }
 
@@ -57,6 +92,40 @@
         ipc.send({task:"open_project", project:proj });
       }
 
+      $scope.showNewProjectForm = function() {
+        $scope.showNewProjectBox = true;
+        setTimeout(function() {
+          document.getElementById("new-project-input").focus();
+        },50);
+      }
+      
+      $scope.handleNewProjectClick = function($event) {
+        if ($event.target.className == "new-project-background") {
+          $scope.showNewProjectBox = false;
+        }
+      }
+      
+      $scope.createProject = function() {
+        let valid = true;
+        for (let project of $scope.projects) {
+          if (project.name == $scope.newProjectName) {
+            valid = false;
+          }
+        }
+        if ($scope.newForm.$valid && $scope.newProjectName.length > 0 && valid) {
+          $scope.newProjectName = $scope.newProjectName.replace(" ","")
+          geneysis.createNewProject($scope.wd + $scope.newProjectName, function(results,err) {
+            let project = JSON.parse(results[0])
+            project.created = new Date(project.created * 1000)
+            project.updated = new Date(project.updated * 1000)               
+            $scope.selectProject(project);
+          });
+        }
+        else if (!valid) {
+          alert("That name is already taken!");
+        }
+      }
+      
     }]);
 
 

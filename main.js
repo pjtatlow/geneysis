@@ -10,6 +10,8 @@ const dialog = require('electron').dialog;
 // Modules to allow access to shell commands
 const shell = require('shelljs');
 const exec = require('child_process').exec;
+// Read JSON files
+const fs = require('fs');
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -24,6 +26,9 @@ function openSelectProject () {
 
   projectsWindow.loadURL(`file://${__dirname}/selectProject.html`);
 
+  projectsWindow.webContents.openDevTools();
+
+  
   // Emitted when the window is closed.
   projectsWindow.on('closed', function () {
     // Dereference the window object, usually you would store windows
@@ -117,6 +122,7 @@ function startGeneysis () {
           if (open_window == null) {
             open_window = projectsWindow;
           }
+          
           dialog.showMessageBox(null, {type:"error",title:"Missing Dependencies",message:"Please install the following dependencies:",detail:missing,buttons:["OK"]}, function() {
             open_window.close();
           });
@@ -192,29 +198,48 @@ ipcMain.on('electron-msg', (event, msg) => {
       shell.cd('.geneysis');
     }
     var wd = shell.pwd().stdout
-    var results = shell.ls('-d','projects/*');
-    var projects = []
+    var results = shell.ls('projects/*/project.json');
+    var projects = [];
     for (let i = 0; i < results.length; i++) {
-      let obj = {};
-      obj.name = results[i].substring(results[i].lastIndexOf('/') + 1);
-      obj.path = wd + "/" + results[i] + "/";
-      projects.push(obj);
+      console.log(results[i])
+      try {
+        let obj = JSON.parse(fs.readFileSync(results[i],{encoding:'utf8'}));
+        console.log(obj)
+        projects.push(obj);
+      }
+      catch (err) {
+        console.log(err)
+        
+      }
     }
+    console.log(projects);
     
     
     event.sender.send('electron-msg', {
       task: "projects",
       projects: projects,
-    })    
+      wd: wd + "/projects/"
+    });
+    
   }
   else if (msg.task == "open_project") {
     project = msg.project;
     openGeneysis();
   }
   else if (msg.task == "get_current_project") {
-    event.sender.send('electron-msg', {
-      task: "load_project",
-      project: project
-    });
+    console.log(project);
+    try {
+      let obj = JSON.parse(fs.readFileSync(project.path + "project.json",{encoding:'utf8'}));
+      console.log(obj);
+      event.sender.send('electron-msg', {
+        task: "load_project",
+        project: obj,
+      });
+    }
+    catch (err) {
+      console.log(err)
+
+    }
+
   }
 });  

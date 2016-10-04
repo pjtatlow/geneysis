@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html ng-app="Geneysis" ng-cloak>
+<html ng-app="Geneysis" ng-controller="MainController" ng-cloak>
   <head>
     <meta charset="UTF-8">
     <title>Geneysis</title>
@@ -7,8 +7,23 @@
     <link href="css/geneysis.css" rel="stylesheet">    
     <link href="css/font-awesome.min.css" rel="stylesheet">    
   </head>
-  <body ng-view>
-
+  <body>
+    <div class="project-info">
+      <div class="project-info-container">
+        <h3 style="margin:0px;">{{project.name}}</h3>
+        <hr>
+        <p>Created: {{project.created.toLocaleString()}}</p>
+        <p>Last Update: {{project.updated.toLocaleString()}}</p>
+        <p>Phages: {{project.phages.length}}</p>
+        <p ng-if="project.events.length == 0">No events yet!</p>
+        <p ng-repeat="event in project.events">Event: {{event.type + ' : ' + event.description}}</p>
+      </div>  
+    </div>
+    <div class="main-view" ng-style="{width: mainWidth + 'px'}" >
+      <div class="main-view-container" ng-view>
+      
+      </div>
+    </div>
   </body>
 
   <script src="node_modules/angular/angular.min.js"></script>  

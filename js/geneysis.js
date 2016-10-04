@@ -11,22 +11,23 @@ var requireKeys = function(obj, keys) {
 
 var Geneysis = {
   
-  createNewDir : function(wd, callbackFn) {
+  createNewProject : function(wd, callbackFn) {
+    console.log(wd);
     var options = {
       mode: 'text',
-      scriptPath: './python/',
-      args: ['--wd', wd, 'create']
+      scriptPath: `${__dirname}/../python/`,
+      args: ['create', '--wd', wd]
     };
     PythonShell.run(scriptPath, options, function(err, results) {
       callbackFn(results, err)
     })  
   },
   
-  load : function(wd, file, callbackFn) {
+  loadPhage : function(wd, file, callbackFn) {
     var options = {
       mode: 'text',
-      scriptPath: './python/',
-      args: ['--wd', wd, 'import', '--file', file]
+      scriptPath: `${__dirname}/../python/`,
+      args: ['import', '--wd', wd, '--file', file]
     };
     PythonShell.run(scriptPath, options, function(err, results) {
       callbackFn(results, err)

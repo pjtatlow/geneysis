@@ -2,6 +2,7 @@
 from functions import *
 import argparse
 import datetime
+import time
 
 settings = {
     "wd": "/opt/geneysis/",
@@ -26,17 +27,24 @@ if args.wd is None:
 elif args.wd[len(args.wd)-1] != "/":
     args.wd += "/"
 
-print args
+#print args
 
 if args.task == "create":
     for directory in ["blastp", "clustalo", "db", "fasta", "genbank"]:
         os.system("mkdir -p {wd}{dir}".format(wd=args.wd, dir=directory))
     create_db(args.wd + "db/geneysis.db")
+    dirs = args.wd.split('/')
+    name = dirs[len(dirs) - 2]
+    project = {"name":name,"path":args.wd,"created":time.time(),"updated":time.time(),"phages":[],"events":[]}
 
+    writeProject(args.wd, project)
+
+    print json.dumps(project)
+    
 elif args.task == "import":
 
     if args.file is None:
-        print "No file given"
+        print >> sys.stderr, "No file given"
         sys.exit(1)
 
 
@@ -54,7 +62,15 @@ elif args.task == "import":
                 if gene.qualifiers['translation'][0][0] == '-':
                     gene.qualifiers['translation'][0] = gene.qualifiers['translation'][0][1:]
                 gene_id = insert_gene(db, gene, phage_id)
-
+                
+        project = loadProject(args.wd)
+ 
+        project['phages'].append(phage.name)
+        
+        writeProject(args.wd, project)
+        
+        print json.dumps(project)
+        
     db.close()
 
 elif args.task == "create_fasta":
