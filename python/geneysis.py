@@ -4,20 +4,14 @@ import argparse
 import datetime
 import time
 
-settings = {
-    "wd": "/opt/geneysis/",
-    "db": "db/geneysis.db",
-    "clustalo_cutoff": 32.5,
-    "blastp_cutoff": 1e-50
-}
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument("task", help="Specify which task you want run")
 parser.add_argument("--wd", help="Directory containing all required files")
 parser.add_argument("--file", help="Genbank file to work with")
 parser.add_argument("--clustalo_cutoff", help="Minimum percent identity when clustering", default=32.5)
 parser.add_argument("--blastp_cutoff", help="Minimum e-value when clustering", default=1e-50)
+parser.add_argument("--cluster_id", help="Cluster ID to adjust")
+parser.add_argument("--golden_phage", help="Phage ID that represents the 'correct' phage.")
 
 args = parser.parse_args()
 
@@ -92,7 +86,7 @@ elif args.task == "blast":
               "blastp/proteinsdb -dbtype prot")
     print "Blasting all proteins"
     blastp = subprocess.Popen(
-        "blastp -db /opt/geneysis/blastp/proteinsdb -query /opt/geneysis/fasta/geneysis.fasta -outfmt '6 qseqid sseqid evalue qstart sstart pident' ",
+        "blastp -db " + args.wd +"blastp/proteinsdb -query " + args.wd + "fasta/geneysis.fasta -outfmt '6 qseqid sseqid evalue qstart sstart pident' ",
         shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     blast_results, err = blastp.communicate()
     blast_results = blast_results.split('\n')
@@ -144,90 +138,26 @@ elif args.task == "cluster":
 
     db.close()
 
+elif args.task == "adjust":
+    if args.cluster_id is None:
+        print >> sys.stderr "Cluster ID required."
+        sys.exit(1)
+
+
+    if args.golden_phage is None:
+        print >> sys.stderr "Golden Phage ID required."
+        sys.exit(1)
+    
+    db = sqlite3.connect(args.wd + "db/geneysis.db")
+
+    cluster = get_cluster(db,args.cluster_id)
+
+    adjust_cluster(cluster,args.golden_phage)
+
+
+    db.close()
+
+
 else:
     print args.task, "not a valid task!"
     sys.exit(1)
-
-# if "-in" in sys.argv:
-#     index = sys.argv.index("-in")
-#     file_path = sys.argv[index + 1]
-#     if file_path[len(file_path) - 1] != "/":
-#         file_path += "/"
-#     input_files = glob.glob(file_path + "*")
-#
-# else:
-#     print "Missing Genbank file path.\nUsage: geneysis.py --in path-to-genbank-files -out"
-#     sys.exit(1)
-#
-# if "-out" in sys.argv:
-#     index = sys.argv.index("-out")
-#     out_path = sys.argv[index + 1]
-#
-# fasta = open(settings['wd'] + "fasta/geneysis.fasta", 'w')
-#
-# db = create_db(settings)
-#
-# for name in input_files:
-#     for phage in SeqIO.parse(name, "genbank"):
-#         os.system("cp " + name.replace(" ", "\ ") + " " + settings["wd"] + "genbank/" + phage.name + ".gbk")
-#
-#         phage_id = insert_phage(db, phage)
-#
-#         for gene in phage.features:
-#             if gene.type == "CDS":
-#                 if gene.qualifiers['translation'][0][0] == '-':
-#                     gene.qualifiers['translation'][0] = gene.qualifiers['translation'][0][1:]
-#                 gene_id = insert_gene(db, gene, phage_id)
-#                 fasta.write(">" + str(gene_id) + "\n" + gene.qualifiers['translation'][0] + "\n")
-# fasta.flush()
-# fasta.close()
-#
-# os.system("makeblastdb -in " + settings["wd"] + "fasta/geneysis.fasta -out " + settings["wd"] +
-#           "blastp/proteinsdb -dbtype prot")
-# print "Blasting all proteins"
-# blastp = subprocess.Popen(
-#     "blastp -db /opt/geneysis/blastp/proteinsdb -query /opt/geneysis/fasta/geneysis.fasta -outfmt '6 qseqid sseqid evalue qstart sstart pident' ",
-#     shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-# blast_results, err = blastp.communicate()
-# blast_results = blast_results.split('\n')
-# hits = []
-# i = 0
-# for hit in blast_results:
-#     hit = hit.split('\t')
-#     if len(hit) == 6 and hit[0] != hit[1]:
-#         hit[0] = int(hit[0])
-#         hit[1] = int(hit[1])
-#         hit[2] = float(hit[2])
-#         hit[3] = int(hit[3])
-#         hit[4] = int(hit[4])
-#         hit[5] = float(hit[5])
-#         hits.append(hit)
-#         i += 1
-# print "Inserting blast hits"
-# insert_blastp_hits(db, hits)
-#
-#
-# # os.system("clustalo -i " + settings["wd"] + "fasta/geneysis.fasta --outfmt=clu --distmat-out=" + settings["wd"] +
-# #           "clustalo/percent.id --full --percent-id --force -o " + settings["wd"] + "clustalo/align.clu")
-# print "Parsing Clustalo output"
-# with open(settings["wd"] + "clustalo/percent.id", 'r') as clustalo:
-#     clustalo.readline()  # take out header
-#     for line in clustalo:
-#         line = line.strip().split()
-#         gene = int(line[0])
-#         for x in xrange(gene + 1, len(line)):
-#             if float(line[x]) >= settings['clustalo_cutoff']:
-#                 insert_clustalo_percents(db,gene,x,line[x])
-
-# print "Finished loading database"
-#
-# db = sqlite3.connect(settings['wd'] + settings['db'])
-# print "Clustering proteins"
-# ids = get_gene_ids(db)
-# i = 1
-# for id in ids:
-#     cluster = get_closest_cluster(db,id,settings,i)
-#     if cluster == i:
-#         i += 1
-#     update_gene_cluster(db, id, cluster)
-# db.close()

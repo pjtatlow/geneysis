@@ -27,7 +27,7 @@ def create_db(db_file):
     if os.path.isfile(db_file):
         os.system("rm -rf " + db_file)
 
-    con = sqlite3.connect(db_file)
+    con = connect_db(db_file)
 
     con.execute('''
         CREATE TABLE `phage` (
@@ -51,6 +51,7 @@ def create_db(db_file):
             `old_locus_tag`	TEXT,
             `translation`	TEXT NOT NULL,
             `cluster`	INTEGER,
+            `adjusted` INTEGER
             FOREIGN KEY(`phage_id`) REFERENCES `phage`(`id`),
             FOREIGN KEY(`cluster`) REFERENCES cluster(id)
         );
@@ -81,7 +82,8 @@ def create_db(db_file):
     con.execute('''
         CREATE TABLE `cluster` (
             `id`	INTEGER PRIMARY KEY AUTOINCREMENT,
-            `name`	TEXT UNIQUE
+            `name`	TEXT UNIQUE,
+            `adjusted` INTEGER
         );
     ''')
     return con
@@ -107,8 +109,8 @@ def insert_gene(db, gene, phage_id):
     else:
         note = ""
 
-    cur.execute("INSERT INTO `gene` (phage_id,start,end,product,note,locus_tag,old_locus_tag,translation) "
-                "VALUES(?,?,?,?,?,?,?,?)",
+    cur.execute("INSERT INTO `gene` (phage_id,start,end,product,note,locus_tag,old_locus_tag,translation,adjusted) "
+                "VALUES(?,?,?,?,?,?,?,?,0)",
                 (phage_id, gene.location.start, gene.location.end, gene.qualifiers["product"][0],
                  note, gene.qualifiers["locus_tag"][0], old_locus, str(gene.qualifiers["translation"][0])))
     db.commit()
@@ -166,6 +168,7 @@ def get_all_genes(db):
         genes.append(gene)
     return genes
 
+
 def get_gene_ids(db):
     result = db.execute("SELECT id from `gene` ORDER BY id")
     ids = []
@@ -202,13 +205,15 @@ def get_all_hits(db, id, args):
     return hits
 
 
+#creates a new cluster with a given name
 def create_cluster(db, name):
     cur = db.cursor()
-    cur.execute("INSERT INTO `cluster` (name) VALUES('%s')" % name)
+    cur.execute("INSERT INTO `cluster` (name,adjusted) VALUES('%s',0)" % name)
     db.commit()
     return cur.lastrowid
 
 
+#sets the cluster for a gene
 def update_gene_cluster(db, gene_id, cluster_id):
     cur = db.cursor()
     cur.execute("UPDATE `gene` set cluster = ? where id = ?",
@@ -216,11 +221,22 @@ def update_gene_cluster(db, gene_id, cluster_id):
     db.commit()
 
 
+# gets all gene id's in a given cluster
 def get_cluster_genes(db, cluster_id):
     result = db.execute("SELECT id from `gene` where cluster = %d" % cluster_id)
     cluster = []
     for row in result:
         cluster.append(row[0])
+    return cluster
+
+
+#gets all the information about each gene in a cluster
+def get_cluster(db,cluster_id):
+    result = db.execute("Select id from `gene` where cluster = %d" % cluster_id)
+    cluster = []
+    for row in result:
+        gene = get_gene(db,row[0])
+        gene['hits'] = get_all_hits(db,gene['id'])
     return cluster
 
 
@@ -259,3 +275,4 @@ def get_closest_cluster(db, gene_id, args, i):
         return create_cluster(db, "cluster_%d" % i)
 
 
+# def adjust_cluster(cluster,golden_phage_id):
