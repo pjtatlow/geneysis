@@ -151,12 +151,8 @@ elif args.task == "adjust":
     db = sqlite3.connect(args.wd + "db/geneysis.db")
 
     cluster = get_cluster(db,args.cluster_id)
-
     adjust_cluster(cluster,args.golden_phage)
-
-
     db.close()
-
 
 else:
     print args.task, "not a valid task!"
