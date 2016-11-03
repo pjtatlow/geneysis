@@ -1,13 +1,20 @@
 from Bio import SeqIO
 import sys, glob, os, sqlite3, subprocess
 import json
+import numpy as np
 
 
+# IS THIS STILL NEEDED? I DID A FIND AND COULDN'T FIND IT USED ANYWHERE...
 def mean(x):
+    # Depreciated
+    '''
     total = 0.0
     for y in x:
         total += float(y)
     return total / float(len(x))
+    '''
+    return np.mean(x)
+
 
 def loadProject(wd):
     project = {}
@@ -171,9 +178,13 @@ def get_all_genes(db):
 
 def get_gene_ids(db):
     result = db.execute("SELECT id from `gene` ORDER BY id")
+    ids = [row[0] for row in result]
+    # Depreciated
+    '''
     ids = []
     for row in result:
         ids.append(row[0])
+    '''
     return ids
 
 
@@ -198,6 +209,7 @@ def get_clustalo_hits(db, id, args):
     return hits
 
 
+# WHAT DOES THIS DO? MAKE A LIST OF LISTS? WHAT IS THE FIRST LINE?
 def get_all_hits(db, id, args):
     hits = get_clustalo_hits(db, id, args)
     for hit in get_blastp_hits(db, id, args):
@@ -224,9 +236,13 @@ def update_gene_cluster(db, gene_id, cluster_id):
 # gets all gene id's in a given cluster
 def get_cluster_genes(db, cluster_id):
     result = db.execute("SELECT id from `gene` where cluster = %d" % cluster_id)
+    cluster = [row[0] for row in result]
+    # Depreciated
+    '''
     cluster = []
     for row in result:
         cluster.append(row[0])
+    '''
     return cluster
 
 
@@ -237,6 +253,7 @@ def get_cluster(db,cluster_id):
     for row in result:
         gene = get_gene(db,row[0])
         gene['hits'] = get_all_hits(db,gene['id'])
+    # WHAT DOES THIS DO? IT RETURNS AN EMPTY CLUSTER
     return cluster
 
 
@@ -264,7 +281,7 @@ def get_closest_cluster(db, gene_id, args, i):
         closest_cluster = -1
         closest_identity = 0
         for cluster_id in close_clusters.keys():
-            avg = mean(close_clusters[cluster_id])
+            avg = np.mean(close_clusters[cluster_id])
             if avg > closest_identity:
                 closest_cluster = cluster_id
                 closest_identity = avg

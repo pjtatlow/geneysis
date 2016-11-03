@@ -28,7 +28,7 @@ if args.task == "create":
         os.system("mkdir -p {wd}{dir}".format(wd=args.wd, dir=directory))
     create_db(args.wd + "db/geneysis.db")
     dirs = args.wd.split('/')
-    name = dirs[len(dirs) - 2]
+    name = dirs[-2]
     project = {"name":name,"path":args.wd,"created":time.time(),"updated":time.time(),"phages":[],"events":[]}
 
     writeProject(args.wd, project)
