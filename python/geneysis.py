@@ -10,7 +10,6 @@ parser.add_argument("--wd", help="Directory containing all required files")
 parser.add_argument("--file", help="Genbank file to work with")
 parser.add_argument("--clustalo_cutoff", help="Minimum percent identity when clustering", default=32.5)
 parser.add_argument("--blastp_cutoff", help="Minimum e-value when clustering", default=1e-50)
-parser.add_argument("--cluster_id", help="Cluster ID to adjust")
 parser.add_argument("--golden_phage", help="Phage ID that represents the 'correct' phage.")
 
 args = parser.parse_args()
@@ -42,7 +41,7 @@ elif args.task == "import":
         sys.exit(1)
 
 
-    db = connect_db(args.wd + "db/geneysis.db")
+    db = sqlite3.connect(args.wd + "db/geneysis.db")
 
     abs_path = os.path.abspath(args.file)
 
@@ -59,7 +58,7 @@ elif args.task == "import":
                 
         project = loadProject(args.wd)
  
-        project['phages'].append(phage.name)
+        project['phages'].append({"name":phage.name,"golden":False,"id":phage_id})
         
         writeProject(args.wd, project)
         
@@ -69,7 +68,7 @@ elif args.task == "import":
 
 elif args.task == "create_fasta":
     with open(args.wd + "fasta/geneysis.fasta", 'w') as fasta:
-        db = connect_db(args.wd + "db/geneysis.db")
+        db = sqlite3.connect(args.wd + "db/geneysis.db")
 
         genes = get_all_genes(db)
         print len(genes), "genes"
@@ -80,7 +79,7 @@ elif args.task == "create_fasta":
 
 elif args.task == "blast":
 
-    db = connect_db(args.wd + "db/geneysis.db")
+    db = sqlite3.connect(args.wd + "db/geneysis.db")
 
     os.system("makeblastdb -in " + args.wd + "fasta/geneysis.fasta -out " + args.wd +
               "blastp/proteinsdb -dbtype prot")
@@ -106,11 +105,14 @@ elif args.task == "blast":
     insert_blastp_hits(db, hits)
 
     db.close()
+    print "Blast complete"
 
 
 elif args.task == "clustalo":
+    print "Running clustal-omega"
+
     os.system("clustalo -i " + args.wd + "fasta/geneysis.fasta --outfmt=clu --distmat-out=" + args.wd +
-              "clustalo/percent.id --full --percent-id --force -o " + args.wd + "clustalo/align.clu")
+              "clustalo/percent.id --full --percent-id --force -o " + args.wd + "clustalo/align.clu -v")
 
     db = connect_db(args.wd + "db/geneysis.db")
 
@@ -124,6 +126,8 @@ elif args.task == "clustalo":
                     insert_clustalo_percents(db, gene, x, line[x])
 
     db.close()
+    
+    print "Finished clustal-omega"
 
 elif args.task == "cluster":
     db = sqlite3.connect(args.wd + "db/geneysis.db")
@@ -138,20 +142,33 @@ elif args.task == "cluster":
 
     db.close()
 
-elif args.task == "adjust":
-    if args.cluster_id is None:
-        print >> sys.stderr "Cluster ID required."
-        sys.exit(1)
-
-
+elif args.task == "mark_golden": # marks any genes from a golden phage as "adjusted", so they won't be messed with later
     if args.golden_phage is None:
-        print >> sys.stderr "Golden Phage ID required."
+        print >> sys.stderr, "Golden Phage ID required."
         sys.exit(1)
     
     db = sqlite3.connect(args.wd + "db/geneysis.db")
+    db.execute("UPDATE `gene` set adjusted = 1 where phage_id = " + args.golden_phage)
+    db.execute("UPDATE `phage` set golden = 1 where id = " + args.golden_phage)    
+    db.close()
 
+
+    project = loadProject(args.wd)
+
+    for i in range(len(project['phages'])):
+        if project['phages'][i]['id'] == int(args.golden_phage):
+            project['phages'][i]['golden'] = True
+
+    writeProject(args.wd, project)
+
+    print json.dumps(project)
+
+elif args.task == "adjust":
+    
+    db = sqlite3.connect(args.wd + "db/geneysis.db")
+    start_codons = ['ATG','GTG','TTG']
     cluster = get_cluster(db,args.cluster_id)
-    adjust_cluster(cluster,args.golden_phage)
+    adjust_cluster(db,cluster,start_codons)
     db.close()
 
 else:
