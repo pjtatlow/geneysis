@@ -3,19 +3,6 @@ import sys, glob, os, sqlite3, subprocess
 import json
 import numpy as np
 
-
-# IS THIS STILL NEEDED? I DID A FIND AND COULDN'T FIND IT USED ANYWHERE...
-def mean(x):
-    # Depreciated
-    '''
-    total = 0.0
-    for y in x:
-        total += float(y)
-    return total / float(len(x))
-    '''
-    return np.mean(x)
-
-
 def loadProject(wd):
     project = {}
     with open("{d}project.json".format(d=wd),'r') as project_json:
@@ -252,12 +239,6 @@ def update_gene_cluster(db, gene_id, cluster_id):
 def get_cluster_genes(db, cluster_id):
     result = db.execute("SELECT id from `gene` where cluster = %d" % cluster_id)
     cluster = [row[0] for row in result]
-    # Depreciated
-    '''
-    cluster = []
-    for row in result:
-        cluster.append(row[0])
-    '''
     return cluster
 
 
@@ -268,7 +249,7 @@ def get_cluster(db,cluster_id):
     for row in result:
         gene = get_gene(db,row[0])
         gene['hits'] = get_all_hits(db,gene['id'])
-    # WHAT DOES THIS DO? IT RETURNS AN EMPTY CLUSTER
+        cluster.append(gene)
     return cluster
 
 
