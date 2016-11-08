@@ -56,7 +56,7 @@ for cluster in clusters:
 
                     for i in range(1,ideal_move_distance)
                         currentStart = gene['start'] - (3 * i) # decrease our start
-                        codon = phageGenome[currentStart:currentStart-3] # codon is going backward
+                        codon = phageGenome[currentStart-3:currentStart] # codon is going backward
 
                         codon = codon[::-1] # reverses codon because we're going backwards
 
@@ -68,7 +68,7 @@ for cluster in clusters:
 
                     for i in range(1,ideal_move_distance)
                         currentStart = gene['start'] + (3 * i) #increase our start
-                        codon = phageGenome[currentStart:currentStart-3] # codon is going backward
+                        codon = phageGenome[currentStart-3:currentStart] # codon is going backward
 
                         codon = codon[::-1] # reverses codon because we're going backwards
 
