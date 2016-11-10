@@ -211,7 +211,6 @@ def get_clustalo_hits(db, id, args):
     return hits
 
 
-# WHAT DOES THIS DO? MAKE A LIST OF LISTS? WHAT IS THE FIRST LINE?
 def get_all_hits(db, id, args):
     hits = get_clustalo_hits(db, id, args)
     for hit in get_blastp_hits(db, id, args):
@@ -243,12 +242,12 @@ def get_cluster_genes(db, cluster_id):
 
 
 #gets all the information about each gene in a cluster
-def get_cluster(db,cluster_id):
+def get_cluster(db,cluster_id,args):
     result = db.execute("Select id from `gene` where cluster = %d" % cluster_id)
     cluster = []
     for row in result:
         gene = get_gene(db,row[0])
-        gene['hits'] = get_all_hits(db,gene['id'])
+        gene['hits'] = get_all_hits(db,gene['id'],args)
         cluster.append(gene)
     return cluster
 
@@ -290,7 +289,6 @@ def get_closest_cluster(db, gene_id, args, i):
 
 #
 def get_golden_genes(cluster,golden_phage_id):
-
     golden_ids = []
     for gene in cluster:
         if gene['phage_id'] == golden_phage_id:
