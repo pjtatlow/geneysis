@@ -63,11 +63,11 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--clustalo_cutoff", help="Minimum percent identity when clustering", default=32.5)
-parser.add_argument("--blastp_cutoff", help="Minimum e-value when clustering", default=0)
+parser.add_argument("--blastp_cutoff", help="Minimum e-value when clustering", default=1e-50)
 args = parser.parse_args()
 
 # Hard coded for dev
-start_codons = ['P'] #CCG
+start_codons = ['ATG','GTG','TTG'] #CCG
 cluster_id = 7
 db = connect_db("geneysis.db")
 cluster = get_cluster(db, cluster_id, args)

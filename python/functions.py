@@ -191,7 +191,7 @@ def get_gene_ids(db):
 
 
 def get_blastp_hits(db, id, args):
-    result = db.execute("SELECT * from `blastp` where query_id = %d and e_value >= %f" %
+    result = db.execute("SELECT * from `blastp` where query_id = %d and e_value <= %f" %
                         (id, args.blastp_cutoff))
     hits = []
     for row in result:
