@@ -194,7 +194,7 @@ def get_gene_ids(db):
 
 
 def get_blastp_hits(db, id, args):
-    result = db.execute("SELECT * from `blastp` where query_id = %d and e_value <= %f" %
+    result = db.execute("SELECT * from `blastp` where query_id = %d and e_value >= %f" %
                         (id, args.blastp_cutoff))
     hits = []
     for row in result:
@@ -249,8 +249,10 @@ def get_cluster(db,cluster_id,args):
     result = db.execute("Select id from `gene` where cluster = %d" % cluster_id)
     cluster = []
     for row in result:
-        gene = get_gene(db, row[0])
-        gene['hits'] = get_blastp_hits(db, gene['id'], args)
+        gene = get_gene(db,row[0])
+        #gene['hits'] = get_all_hits(db,gene['id'],args)
+        # USE ONLY THE BLASTP HITS
+        gene['hits'] = get_blastp_hits(db,gene['id'],args)
         cluster.append(gene)
     return cluster
 
