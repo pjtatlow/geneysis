@@ -39,6 +39,7 @@ def create_db(db_file):
             `id`	INTEGER PRIMARY KEY AUTOINCREMENT,
             `phage_id`	INTEGER,
             `start`	INTEGER NOT NULL,
+            `orig_start` INTEGER NOT NULL,
             `end`	INTEGER NOT NULL,
             `product`	TEXT NOT NULL,
             `note`	TEXT,
@@ -104,9 +105,9 @@ def insert_gene(db, gene, phage_id):
     else:
         note = ""
 
-    cur.execute("INSERT INTO `gene` (phage_id,start,end,product,note,locus_tag,old_locus_tag,translation,adjusted) "
-                "VALUES(?,?,?,?,?,?,?,?,0)",
-                (phage_id, gene.location.start, gene.location.end, gene.qualifiers["product"][0],
+    cur.execute("INSERT INTO `gene` (phage_id,start,orig_start,end,product,note,locus_tag,old_locus_tag,translation,adjusted) "
+                "VALUES(?,?,?,?,?,?,?,?,?,0)",
+                (phage_id, gene.location.start,gene.location.start, gene.location.end, gene.qualifiers["product"][0],
                  note, gene.qualifiers["locus_tag"][0], old_locus, str(gene.qualifiers["translation"][0])))
     db.commit()
     return cur.lastrowid
@@ -135,17 +136,18 @@ def get_gene(db, id):
         gene['id'] = int(row[0])
         gene['phage_id'] = int(row[1])
         gene['start'] = int(row[2])
-        gene['end'] = int(row[3])
-        gene['product'] = row[4]
-        gene['note'] = row[5]
-        gene['locus_tag'] = row[6]
-        gene['old_locus_tag'] = row[7]
-        gene['translation'] = row[8]
-        if row[9] is None:
-            gene['cluster'] = row[9]
+        gene['orig_start'] = int(row[3])
+        gene['end'] = int(row[4])
+        gene['product'] = row[5]
+        gene['note'] = row[6]
+        gene['locus_tag'] = row[7]
+        gene['old_locus_tag'] = row[8]
+        gene['translation'] = row[9]
+        if row[10] is None:
+            gene['cluster'] = row[10]
         else:
-            gene['cluster'] = int(row[9])
-        if row[10] == 0:
+            gene['cluster'] = int(row[10])
+        if row[11] == 0:
             gene['adjusted'] = False
         else:
             gene['adjusted'] = True
@@ -160,17 +162,18 @@ def get_all_genes(db):
         gene['id'] = int(row[0])
         gene['phage_id'] = int(row[1])
         gene['start'] = int(row[2])
-        gene['end'] = int(row[3])
-        gene['product'] = row[4]
-        gene['note'] = row[5]
-        gene['locus_tag'] = row[6]
-        gene['old_locus_tag'] = row[7]
-        gene['translation'] = row[8]
-        if row[9] is None:
-            gene['cluster'] = row[9]
+        gene['orig_start'] = int(row[3])
+        gene['end'] = int(row[4])
+        gene['product'] = row[5]
+        gene['note'] = row[6]
+        gene['locus_tag'] = row[7]
+        gene['old_locus_tag'] = row[8]
+        gene['translation'] = row[9]
+        if row[10] is None:
+            gene['cluster'] = row[10]
         else:
-            gene['cluster'] = int(row[9])
-        if row[10] == 0:
+            gene['cluster'] = int(row[10])
+        if row[11] == 0:
             gene['adjusted'] = False
         else:
             gene['adjusted'] = True        
@@ -259,7 +262,7 @@ def get_closest_cluster(db, gene_id, args, i):
     close_clusters = {}
     hits = get_all_hits(db, gene_id, args)
     checked = []
-# go through all hits and if any of them are already in a cluster, it adds the cluster to the "close_clusters" dictionary    
+# go through all hits and if any of them are already in a cluster, it adds the cluster to the "close_clusters" dictionary
     for hit in hits:
         if hit['subject_id'] != gene_id:
             hit_id = hit['subject_id']
@@ -289,18 +292,29 @@ def get_closest_cluster(db, gene_id, args, i):
     else:
         return create_cluster(db, "cluster_%d" % i)
 
-#
-def get_golden_genes(cluster,golden_phage_id):
-    golden_ids = []
+#returns the golden phages in order, from highest priority to lowest
+#for golden numbers, just add 1 to the index of the phage_id in the list
+def get_golden_phages(db):
+    result = db.execute("select id from phage where golden != 0 order by golden asc;")
+    golden_phages = [row[0] for row in result]
+    return golden_phages
+
+def get_golden_genes(golden_phages,cluster):
+    golden_ids = {}
     for gene in cluster:
-        if gene['phage_id'] == golden_phage_id:
-            golden_ids.append(gene['id'])
+        if gene['phage_id'] in golden_phages:
+            golden_number = golden_phages.index(gene['phage_id']) + 1 # we add one to the index to get the golden priority
+            if golden_number not in  golden_ids.keys():
+                golden_ids[golden_number] = []
+            golden_ids[golden_number].append(gene['id'])
     return golden_ids
 
 #makes the best possible adjustments for a given cluster, aligning any genes that do not belong to 
-def adjust_cluster(db,cluster,golden_phage_id,start_codons):
+def adjust_cluster(db,cluster,start_codons):
     #first we need to make a list of all the golden phage proteins that are in this create_cluster
-    golden_genes = get_golden_genes(cluster,golden_phage_id)
+    golden_phages = get_golden_phages(db)
+    golden_genes = get_golden_genes(golden_phages,cluster) # golden genes is a dictionary of lists
+    #keys corrospond to the phage's "goldenness" and values in the list are all the genes from that phage
     
     if len(golden_genes) == 0: #make sure there is at least one gene from the golden phage in the cluster
         return
