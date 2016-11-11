@@ -146,10 +146,11 @@ elif args.task == "mark_golden": # marks any genes from a golden phage as "adjus
     if args.golden_phage is None:
         print >> sys.stderr, "Golden Phage ID required."
         sys.exit(1)
-    
     db = sqlite3.connect(args.wd + "db/geneysis.db")
     db.execute("UPDATE `gene` set adjusted = 1 where phage_id = " + args.golden_phage)
-    db.execute("UPDATE `phage` set golden = 1 where id = " + args.golden_phage)    
+    nextGolden = db.execute("SELECT COUNT(*) FROM `phage` where golden != 0").fetchone()[0] + 1
+    db.execute("UPDATE `phage` set golden = "+ str(nextGolden) +" where id = " + args.golden_phage)  
+    db.commit()
     db.close()
 
 
