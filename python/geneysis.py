@@ -111,8 +111,8 @@ elif args.task == "blast":
 elif args.task == "clustalo":
     print "Running clustal-omega"
 
-    os.system("clustalo -i " + args.wd + "fasta/geneysis.fasta --outfmt=clu --distmat-out=" + args.wd +
-              "clustalo/percent.id --full --percent-id --force -o " + args.wd + "clustalo/align.clu -v")
+    # os.system("clustalo -i " + args.wd + "fasta/geneysis.fasta --outfmt=clu --distmat-out=" + args.wd +
+    #           "clustalo/percent.id --full --percent-id --force -o " + args.wd + "clustalo/align.clu -v")
 
     db = connect_db(args.wd + "db/geneysis.db")
 
