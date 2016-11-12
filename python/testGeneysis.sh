@@ -24,3 +24,6 @@ python geneysis.py cluster --wd ~/Desktop/geneysis
 #mark golden_phages
 python geneysis.py mark_golden --wd ~/Desktop/geneysis --golden_phage 1
 python geneysis.py mark_golden --wd ~/Desktop/geneysis --golden_phage 3
+
+#
+python geneysis.py to_genbank
