@@ -194,8 +194,20 @@ def get_gene_ids(db):
 
 
 def get_blastp_hits(db, id, args):
-    result = db.execute("SELECT * from `blastp` where query_id = %d and e_value >= %f" %
-                        (id, args.blastp_cutoff))
+
+    result = db.execute("SELECT * from `blastp` where query_id = %d and e_value <= %s" %
+                        (id, str(args.blastp_cutoff)))
+    hits = []
+    for row in result:
+        hit = {'type': "blastp", 'query_id': int(row[1]), 'subject_id': int(row[2]), 'ident': float(row[3]), 'e_value': float(row[4]),
+               'query_start': int(row[5]), 'subject_start': int(row[6])}
+        hits.append(hit)
+    return hits
+
+def get_all_blastp_hits(db, id, args):
+
+    result = db.execute("SELECT * from `blastp` where query_id = %d" %
+                        (id))
     hits = []
     for row in result:
         hit = {'type': "blastp", 'query_id': int(row[1]), 'subject_id': int(row[2]), 'ident': float(row[3]), 'e_value': float(row[4]),
@@ -252,7 +264,7 @@ def get_cluster(db,cluster_id,args):
         gene = get_gene(db,row[0])
         #gene['hits'] = get_all_hits(db,gene['id'],args)
         # USE ONLY THE BLASTP HITS
-        gene['hits'] = get_blastp_hits(db,gene['id'],args)
+        gene['hits'] = get_all_blastp_hits(db,gene['id'],args)
         cluster.append(gene)
     return cluster
 
@@ -303,7 +315,7 @@ def get_golden_genes(golden_phages,cluster):
     golden_ids = {}
     for gene in cluster:
         if gene['phage_id'] in golden_phages:
-            golden_number = golden_phages.index(gene['phage_id']) + 1 # we add one to the index to get the golden priority
+            golden_number = golden_phages.index(gene['phage_id'])
             if golden_number not in  golden_ids.keys():
                 golden_ids[golden_number] = []
             golden_ids[golden_number].append(gene['id'])
