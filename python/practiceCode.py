@@ -2,6 +2,12 @@ from functions import *
 import argparse
 
 
+
+def forward_strands():
+    pass
+
+
+
 #makes the best possible adjustments for a given cluster, aligning any genes that do not belong to 
 def adjust_cluster(db,cluster,golden_phage_id,start_codons):
     #first we need to make a list of all the golden phage proteins that are in this create_cluster
