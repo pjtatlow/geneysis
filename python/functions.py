@@ -1,4 +1,4 @@
-from Bio import SeqIO
+#from Bio import SeqIO
 import sys, glob, os, sqlite3, subprocess
 import json
 import numpy as np
@@ -125,6 +125,22 @@ def insert_clustalo_percents(db, query, subject, identity):
     cur.execute("INSERT INTO `clustalo` (query_id,subject_id,percent_ident) "
                 "VALUES(?,?,?)", (query, subject, identity))
     db.commit()
+
+
+def get_phage(db, id):
+    result = db.execute("SELECT * from `phage` where id = " + str(id))
+    if result.arraysize != 1:
+        raise Exception("Attempted to find ID " + str(id) + " but found improper number of results.")
+    phage = {}
+    for row in result:
+        phage['id'] = int(row[0])
+        phage['name'] = row[1]
+        phage['orig_name'] = row[2]
+        phage['organism'] = row[3]
+        phage['definition'] = row[4]
+        phage['golden'] = int(row[5])
+        phage['seq'] = row[6]
+    return phage
 
 
 def get_gene(db, id):
