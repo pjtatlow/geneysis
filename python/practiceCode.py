@@ -7,6 +7,12 @@ def updateStart(db, gene_id, newStart):
     db.commit()
 
 
+### DO THIS ###
+def findBestStart(db, gene, potentialStarts):
+    print potentialStarts
+    # Check against clustalo???
+
+
 def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
     # Init bestGeneStart
     farBestGeneStart = None
@@ -149,8 +155,7 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
     
     for gene in cluster:
         if gene['phage_id'] not in golden_phages:
-            closeStart = [] # Because if we have muliple golds we will have many different starts to try?
-            farStart = [] # Because if we have muliple golds we will have many different starts to try?
+            potentialStarts = set() # Because if we have muliple golds we will have many different starts to try?
             print
             print "New Gene"            
             possible_adjustments = []
@@ -174,8 +179,10 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
                             print "Too Short"
                             ideal_move_distance = golden_start - gene_start
                             newCloseStart, newFarStart = tooShort(db, gene, ideal_move_distance, start_codons, stop_codons)
-                            closeStart.append(newCloseStart)
-                            farStart.append(newFarStart)
+                            if newCloseStart != None:
+                                potentialStarts.add(newCloseStart)
+                            if newFarStart != None:
+                                potentialStarts.add(newFarStart)
                         # our gene is too long and we need to trim it down
                         elif golden_start == 1:
                             print "Too Long"
@@ -185,15 +192,12 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
                             ######## Just to debug #####################
                             print "Starts:", newCloseStart, newFarStart
                             print "Original:", gene['start']
-                            if closeStart == None:
-                                print "closeStart is None"
-                            if farStart == None:
-                                print "closeStart is None"
                             ###################################
 
-
-                            closeStart.append(newCloseStart)
-                            farStart.append(newFarStart)
+                            if newCloseStart != None:
+                                potentialStarts.add(newCloseStart)
+                            if newFarStart != None:
+                                potentialStarts.add(newFarStart)
                         # right now we do nothing...
                         else:
                             print "Neither one starts at 1..."
@@ -202,54 +206,9 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
                     else:
                         print "Gene", gene['id'], "has no blastp hit for golden gene", gold_id, gene['hits']
 
-
-
-
-
-
-
-        #     pass
-        # if not gene['adjusted'] and gene['phage_id'] != golden_phage_id: # only adjust non-golden genes that have not been adjusted
-        #     golden_hit = None
-        #     gold_id = None
-        #     # find the closest golden gene blastp his
-        #     for hit in gene['hits']:
-                
-        #         # make sure we're dealing with a blastp hit is to a golden gene
-        #         if hit['type'] == "blastp" and hit['subject_id'] in golden_genes:
-        #             # first golden gene blastp hit
-        #             if golden_hit is None:
-        #                 gold_id = hit['subject_id']
-        #                 golden_hit = hit
-        #             # if the evalue of this hit is smaller than the best one so far, then this is out new best one
-        #             elif hit['e_value'] < golden_hit['e_value']:
-        #                 gold_id = hit['subject_id']
-        #                 golden_hit = hit
-
-
-        #     print "Gold ID:", gold_id
-
-        #     if gold_id == None:
-        #         print "There was no matches in blastp to the golden genes"
-        #     else:
-        #         # IN A BLASTP CLUSTER, THERE IS A SUBJECT_START AND A QUERY_START
-        #         golden_start = golden_hit['subject_start']
-        #         gene_start = golden_hit['query_start']
-
-        #         print golden_start
-        #         print gene_start
-
-        #          #our gene is too short and we need to move the start upstream
-        #         if gene_start == 1 and golden_start == 1:
-        #             print "They are already perfectly aligned!"
-        #         elif gene_start == 1:
-        #             print "Option 1"
-        #         #our gene is too long and we need to trim it down
-        #         elif golden_start == 1:
-        #             print "Option 2"
-        #         # right now we do nothing...
-        #         else:
-        #             print "Neither one starts at 1..."
+            if potentialStarts: # if set is not empty
+                bestStart = findBestStart(db, gene, potentialStarts)
+                #updateStart(db, gene['id'], bestStart) Uncomment when ready
 
 ###############################################################################################################
 
@@ -266,12 +225,5 @@ cluster_id = 17
 db = connect_db("geneysis.db")
 cluster = get_cluster(db, cluster_id, args)
 golden_phage_id = 5
-print cluster[4]['phage_id']
-#print get_gene(db, 1579)
 
 adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons)
-'''
-db = connect_db("geneysis.db")
-phage = get_phage(db, 3)
-print phage['seq']
-'''
