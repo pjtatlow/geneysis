@@ -1,6 +1,11 @@
 from functions import *
 import argparse
 
+def updateStart(db, gene_id, newStart):
+    cur = db.cursor()
+    cur.execute("UPDATE gene SET start = " + str(newStart) + " WHERE id = " + str(gene_id))
+    db.commit()
+
 
 def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
     # Init bestGeneStart
