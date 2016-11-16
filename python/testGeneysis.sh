@@ -2,18 +2,21 @@
 
 
 #create the project on the desktop
-#python geneysis.py create --wd ~/Desktop/geneysis
+python geneysis.py create --wd ~/Desktop/geneysis
 
 ##load all the phages
-#for GENBANK in $( ls genbank/*.gb ); do
-#    python geneysis.py import --wd ~/Desktop/geneysis --file $GENBANK
-#done
-#
+for GENBANK in $( ls genbank/*.gb ); do
+    python geneysis.py import --wd ~/Desktop/geneysis --file $GENBANK
+done
+
 ##create fasta
-#python geneysis.py create_fasta --wd ~/Desktop/geneysis
+python geneysis.py create_fasta --wd ~/Desktop/geneysis
 
 ##create blast database and blast all proteins
-#python geneysis.py blast --wd ~/Desktop/geneysis
+python geneysis.py blast --wd ~/Desktop/geneysis
+
+cp clustalo/* ~/Desktop/geneysis/clustalo
+gunzip ~/Desktop/geneysis/clustalo/*.gz
 
 #run clustalo
 python geneysis.py clustalo --wd ~/Desktop/geneysis

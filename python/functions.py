@@ -1,4 +1,4 @@
-#from Bio import SeqIO
+from Bio import SeqIO
 import sys, glob, os, sqlite3, subprocess
 import json
 import numpy as np
@@ -41,6 +41,7 @@ def create_db(db_file):
             `start`	INTEGER NOT NULL,
             `orig_start` INTEGER NOT NULL,
             `end`	INTEGER NOT NULL,
+            `orig_end` INTEGER NOT NULL,            
             `product`	TEXT NOT NULL,
             `note`	TEXT,
             `locus_tag`	TEXT NOT NULL UNIQUE,
@@ -48,6 +49,7 @@ def create_db(db_file):
             `translation`	TEXT NOT NULL,
             `cluster`	INTEGER,
             `adjusted` INTEGER,
+            `rev_comp` INTEGER,
             FOREIGN KEY(`phage_id`) REFERENCES `phage`(`id`),
             FOREIGN KEY(`cluster`) REFERENCES cluster(id)
         );
@@ -105,9 +107,15 @@ def insert_gene(db, gene, phage_id):
     else:
         note = ""
 
-    cur.execute("INSERT INTO `gene` (phage_id,start,orig_start,end,product,note,locus_tag,old_locus_tag,translation,adjusted) "
-                "VALUES(?,?,?,?,?,?,?,?,?,0)",
-                (phage_id, gene.location.start,gene.location.start, gene.location.end, gene.qualifiers["product"][0],
+    if gene.strand == 1:
+        cur.execute("INSERT INTO `gene` (phage_id,start,orig_start,end,orig_end,product,note,locus_tag,old_locus_tag,translation,adjusted,rev_comp) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,0,0)",
+                (phage_id, gene.location.start,gene.location.start, gene.location.end,gene.location.end, gene.qualifiers["product"][0],
+                 note, gene.qualifiers["locus_tag"][0], old_locus, str(gene.qualifiers["translation"][0])))
+    else:
+        cur.execute("INSERT INTO `gene` (phage_id,start,orig_start,end,orig_end,product,note,locus_tag,old_locus_tag,translation,adjusted,rev_comp) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,0,1)",
+                (phage_id, gene.location.start,gene.location.start, gene.location.end,gene.location.end, gene.qualifiers["product"][0],
                  note, gene.qualifiers["locus_tag"][0], old_locus, str(gene.qualifiers["translation"][0])))
     db.commit()
     return cur.lastrowid
@@ -154,19 +162,24 @@ def get_gene(db, id):
         gene['start'] = int(row[2])
         gene['orig_start'] = int(row[3])
         gene['end'] = int(row[4])
-        gene['product'] = row[5]
+        gene['orig_end'] = int(row[5])
+        gene['product'] = row[6]
         gene['note'] = row[6]
-        gene['locus_tag'] = row[7]
-        gene['old_locus_tag'] = row[8]
-        gene['translation'] = row[9]
-        if row[10] is None:
-            gene['cluster'] = row[10]
+        gene['locus_tag'] = row[8]
+        gene['old_locus_tag'] = row[9]
+        gene['translation'] = row[10]
+        if row[11] is None:
+            gene['cluster'] = row[11]
         else:
-            gene['cluster'] = int(row[10])
-        if row[11] == 0:
+            gene['cluster'] = int(row[11])
+        if row[12] == 0:
             gene['adjusted'] = False
         else:
             gene['adjusted'] = True
+        if row[13] == 0:
+            gene['rev_comp'] = False
+        else:
+            gene['rev_comp'] = True            
     return gene
 
 
@@ -180,19 +193,24 @@ def get_all_genes(db):
         gene['start'] = int(row[2])
         gene['orig_start'] = int(row[3])
         gene['end'] = int(row[4])
-        gene['product'] = row[5]
+        gene['orig_end'] = int(row[5])
+        gene['product'] = row[6]
         gene['note'] = row[6]
-        gene['locus_tag'] = row[7]
-        gene['old_locus_tag'] = row[8]
-        gene['translation'] = row[9]
-        if row[10] is None:
-            gene['cluster'] = row[10]
+        gene['locus_tag'] = row[8]
+        gene['old_locus_tag'] = row[9]
+        gene['translation'] = row[10]
+        if row[11] is None:
+            gene['cluster'] = row[11]
         else:
-            gene['cluster'] = int(row[10])
-        if row[11] == 0:
+            gene['cluster'] = int(row[11])
+        if row[12] == 0:
             gene['adjusted'] = False
         else:
-            gene['adjusted'] = True        
+            gene['adjusted'] = True
+        if row[13] == 0:
+            gene['rev_comp'] = False
+        else:
+            gene['rev_comp'] = True                      
         genes.append(gene)
     return genes
 

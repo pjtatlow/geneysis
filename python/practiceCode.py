@@ -3,10 +3,10 @@ import argparse
 
 def updateStart(db, gene_id, newStart, rev_comp):
     cur = db.cursor()
-    if !rev_comp:
-        cur.execute("UPDATE gene SET start = " + str(newStart) + " WHERE id = " + str(gene_id))
+    if rev_comp == False:
+        cur.execute("UPDATE gene SET start = " + str(newStart) + ", adjusted = 1 WHERE id = " + str(gene_id))
     else:
-        cur.execute("UPDATE gene SET end = " + str(newStart) + " WHERE id = " + str(gene_id))
+        cur.execute("UPDATE gene SET end = " + str(newStart) + ", adjusted = 1 WHERE id = " + str(gene_id))
     db.commit()
 
 
