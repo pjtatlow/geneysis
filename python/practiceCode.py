@@ -1,19 +1,28 @@
 from functions import *
 import argparse
 
-def updateStart(db, gene_id, newStart):
+def updateStart(db, gene_id, newStart, rev_comp):
     cur = db.cursor()
-    cur.execute("UPDATE gene SET start = " + str(newStart) + " WHERE id = " + str(gene_id))
+    if !rev_comp:
+        cur.execute("UPDATE gene SET start = " + str(newStart) + " WHERE id = " + str(gene_id))
+    else:
+        cur.execute("UPDATE gene SET end = " + str(newStart) + " WHERE id = " + str(gene_id))
     db.commit()
 
 
-### DO THIS ###
-def findBestStart(db, gene, potentialStarts):
+def findBestStart(db, gene, potentialStarts, ideal_move_distance):
     print potentialStarts
-    # Check against clustalo???
+    if gene['rev_comp']:
+        check = gene['end']
+    else:
+        check = gene['start']
+    imd = ideal_move_distance * 3
+
+    diffs = [np.abs(s - imd) for s in potentialStarts]
+    return potentialStarts[np.argmax(diffs)]
 
 
-def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
+def tooLongForwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons):
     # Init bestGeneStart
     farBestGeneStart = None
     closeBestGeneStart = None
@@ -39,7 +48,7 @@ def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
     return closeBestGeneStart, farBestGeneStart
 
 
-def tooLongBackward(db, gene, ideal_move_distance, start_codons, stop_codons):
+def tooLongBackwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons):
     # Init bestGeneStart
     farBestGeneStart = None
     closeBestGeneStart = None
@@ -66,17 +75,78 @@ def tooLongBackward(db, gene, ideal_move_distance, start_codons, stop_codons):
     return closeBestGeneStart, farBestGeneStart
 
 
-def tooLong(db, gene, ideal_move_distance, start_codons, stop_codons):
-    if gene['start'] < gene['end']:
-        print "Forward"
-        return tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons)
-    elif gene['start'] > gene['end']:
-        print "Backward"
-        return tooLongBackward(db, gene, ideal_move_distance, start_codons, stop_codons)
+def tooLongForwardRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['end'] + (3 * i) - 2 # increase our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart:currentStart+3] # codon is going forward
+
+        print codon
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        elif codon in start_codons and i > ideal_move_distance:
+            print "***far"
+            farBestGeneStart = currentStart
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "***on or before"
+            closeBestGeneStart = currentStart
+    return closeBestGeneStart, farBestGeneStart
+
+
+def tooLongBackwardRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['end'] - (3 * i) - 2 # decrease our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart:currentStart+3] # codon is going backward
+        codon = codon[::-1] # reverse the codon
+
+        print codon
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        elif codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            closeBestGeneStart = currentStart
+    return closeBestGeneStart, farBestGeneStart
+
+
+def tooLong(db, gene, ideal_move_distance, start_codons, stop_codons,revcomp_start_codons,revcomp_stop_codons):
+    if gene['rev_comp'] == False:
+        if gene['start'] < gene['end']:
+            print "Forward"
+            return tooLongForwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons)
+        elif gene['start'] > gene['end']:
+            print "Backward"
+            return tooLongBackwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons)
+    else:
+        if gene['start'] < gene['end']:
+            print "Forward"
+            return tooLongForwardRevComp(db, gene, ideal_move_distance, revcomp_start_codons, revcomp_stop_codons)
+        elif gene['start'] > gene['end']:
+            print "Backward"
+            return tooLongBackwardRevComp(db, gene, ideal_move_distance, revcomp_start_codons, revcomp_stop_codons)
 
 
 
-def tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons):
+def tooShortForwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons):
     # Init bestGeneStart
     farBestGeneStart = None
     closeBestGeneStart = None
@@ -102,7 +172,7 @@ def tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons):
     return closeBestGeneStart, farBestGeneStart
 
 
-def tooShortBackward(db, gene, ideal_move_distance, start_codons, stop_codons):
+def tooShortBackwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons):
     # Init bestGeneStart
     farBestGeneStart = None
     closeBestGeneStart = None
@@ -129,13 +199,74 @@ def tooShortBackward(db, gene, ideal_move_distance, start_codons, stop_codons):
     return closeBestGeneStart, farBestGeneStart
 
 
+def tooShortForwardRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['end'] - (3 * i) - 2 # decrease our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart:currentStart+3]
+
+        print codon
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        elif codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            closeBestGeneStart = currentStart
+    return closeBestGeneStart, farBestGeneStart
+
+
+def tooShortBackwardRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['end'] + (3 * i) - 2 # increase our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart:currentStart+3]
+        codon = codon[::-1] # reverse the codon
+
+        print codon
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        elif codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            closeBestGeneStart = currentStart
+    return closeBestGeneStart, farBestGeneStart
+
+
 def tooShort(db, gene, ideal_move_distance, start_codons, stop_codons):
-    if gene['start'] < gene['end']:
-        print "Forward"
-        return tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons)
-    elif gene['start'] > gene['end']:
-        print "Backward"
-        return tooShortBackward(db, gene, ideal_move_distance, start_codons, stop_codons)
+    if gene['rev_comp'] == False:
+        if gene['start'] < gene['end']:
+            print "Forward"
+            return tooShortForwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons)
+        elif gene['start'] > gene['end']:
+            print "Backward"
+            return tooShortBackwardNormal(db, gene, ideal_move_distance, start_codons, stop_codons)
+    else:
+        if gene['start'] < gene['end']:
+            print "Forward"
+            return tooShortForwardRevComp(db, gene, ideal_move_distance, revcomp_start_codons, revcomp_stop_codons)
+        elif gene['start'] > gene['end']:
+            print "Backward"
+            return tooShortBackwardRevComp(db, gene, ideal_move_distance, revcomp_start_codons, revcomp_stop_codons)
 
 
 
@@ -178,7 +309,7 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
                         elif gene_start == 1:
                             print "Too Short"
                             ideal_move_distance = golden_start - gene_start
-                            newCloseStart, newFarStart = tooShort(db, gene, ideal_move_distance, start_codons, stop_codons)
+                            newCloseStart, newFarStart = tooShort(db, gene, ideal_move_distance, start_codons, stop_codons,revcomp_start_codons,revcomp_stop_codons)
                             if newCloseStart != None:
                                 potentialStarts.add(newCloseStart)
                             if newFarStart != None:
@@ -187,7 +318,7 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
                         elif golden_start == 1:
                             print "Too Long"
                             ideal_move_distance = gene_start - golden_start
-                            newCloseStart, newFarStart = tooLong(db, gene, ideal_move_distance, start_codons, stop_codons)
+                            newCloseStart, newFarStart = tooLong(db, gene, ideal_move_distance, start_codons, stop_codons,revcomp_start_codons,revcomp_stop_codons)
 
                             ######## Just to debug #####################
                             print "Starts:", newCloseStart, newFarStart
@@ -207,8 +338,8 @@ def adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons):
                         print "Gene", gene['id'], "has no blastp hit for golden gene", gold_id, gene['hits']
 
             if potentialStarts: # if set is not empty
-                bestStart = findBestStart(db, gene, potentialStarts)
-                #updateStart(db, gene['id'], bestStart) Uncomment when ready
+                bestStart = findBestStart(db, gene, potentialStarts, ideal_move_distance)
+                updateStart(db, gene['id'], bestStart, gene['rev_comp']) Uncomment when ready
 
 ###############################################################################################################
 
@@ -220,10 +351,12 @@ args = parser.parse_args()
 
 # Hard coded for dev
 start_codons = ['ATG','GTG','TTG'] #CCG
+revcomp_start_codons = ['CAT', 'CAC', 'CAA']
 stop_codons = ['TAG', 'TAA', 'TGA']
+revcomp_stop_codons = ['CTA', 'TTA', 'TCA']
 cluster_id = 17
 db = connect_db("geneysis.db")
 cluster = get_cluster(db, cluster_id, args)
 golden_phage_id = 5
 
-adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons)
+adjust_cluster(db,cluster,golden_phage_id,start_codons,stop_codons,revcomp_start_codons,revcomp_stop_codons)
