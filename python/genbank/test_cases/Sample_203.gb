@@ -1,14 +1,13 @@
-LOCUS       SAM00001
-DEFINITION  Gene 1, shifted +1
-  ORGANISM  Sample_1
+LOCUS       SAM00202
+DEFINITION  Shift_left_2
+  ORGANISM  Sample_2_2
 FEATURES             Location/Qualifiers
-     CDS             2..511
-                     /translation="MTTIAYDGKTLAGDSQTTQGDIRLSMHAVKIFTPQPGESWVVNG
-                     EKAVSFGVAGCLQGNNALREALNSCMKGYQGLTGSTRFPKGIVISYLVVTEHGNVYAG
-                     GQYENDEMPWLTKVAAPIAVGSGAEFAIGAMAAGASAGDAVSIAARFDVNTGGEIREI
-                     SHEALSRHA"
-                     /product="1"
-                     /locus_tag="SAM_1_1"
+     CDS             458..859
+                     /translation="MARFGRLAMKLFHVTRDSYVLSGVVATAIICAESHEAAVRHWPK
+                     VDRQMQLEVVELAPAPENQLPGVVLTTQFWGQGKPGSLASRHPEAKIFIIEFERTATT
+                     ALKVTDWKDHRGPHPDFEGGDIDPQTLSPAF"
+                     /product="2_2"
+                     /locus_tag="SAM_2_2"
 
 ORIGIN      
         1 atgaccacaa tcgcttacga cgggaaaacc ctcgcgggtg attcccaaac gacacaaggc

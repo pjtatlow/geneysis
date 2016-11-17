@@ -1,65 +1,14 @@
-LOCUS       SAM00000
-DEFINITION  Sample
-  ORGANISM  Sample
+LOCUS       SAM00101
+DEFINITION  Shift_right_1
+  ORGANISM  Sample_1_1
 FEATURES             Location/Qualifiers
-     CDS             1..510
+     CDS             2..511
                      /translation="MTTIAYDGKTLAGDSQTTQGDIRLSMHAVKIFTPQPGESWVVNG
                      EKAVSFGVAGCLQGNNALREALNSCMKGYQGLTGSTRFPKGIVISYLVVTEHGNVYAG
                      GQYENDEMPWLTKVAAPIAVGSGAEFAIGAMAAGASAGDAVSIAARFDVNTGGEIREI
                      SHEALSRHA"
-                     /product="1"
-                     /locus_tag="SAM_1"
-     CDS             461..862
-                     /translation="MARFGRLAMKLFHVTRDSYVLSGVVATAIICAESHEAAVRHWPK
-                     VDRQMQLEVVELAPAPENQLPGVVLTTQFWGQGKPGSLASRHPEAKIFIIEFERTATT
-                     ALKVTDWKDHRGPHPDFEGGDIDPQTLSPAF"
-                     /product="2"
-                     /locus_tag="SAM_2"
-     CDS             1003..1227
-                     /translation="MNLYLLKRTDKYGHEEFISIVVSAETEQAARETKPSTGYWCDGG
-                     HGEEKVTLSCTHIGITELPPGVIHESYQNP"
-                     /product="3"
-                     /locus_tag="SAM_3"
-     CDS             1314..1568
-                     /translation="MENTMNLYLLERTDSVGYDEFDSIVVATPTEDAARATFGKGWGW
-                     TCFCDEDDACDCGDGVTLSVKHIGTTHLEEGLIHSSFCAG"
-                     /product="4"
-                     /locus_tag="SAM_4"
-     CDS             1709..1876
-                     /translation="MKAKLRNFALLVFLVLAVLFYLAKNFVMLAVDVAIILMVLWVLR
-                     SLAKRAFRRKA"
-                     /product="5"
-                     /locus_tag="SAM_5"
-     CDS             1940..2770
-                     /translation="MKKLLVGLLAVLAFSAHAADVTITTGQQGLTYNATYGVNLASAL
-                     NEFGNKSTVVPSKGSLDNLDKVAAGSAQIGFTQADAFQFWRSQHPNEAQNVDIVGQLG
-                     DECVFVAVKKEGKVGGEADLKEGIKIAVGEPDSGSYASWQYLQGLVKQYAKAETYAKG
-                     GIRSLSKVATGEYDAFMWVSAPGKNNKFLEAVNQDSSGLKLIDMNNWNVNDKLPNGQA
-                     VYEKKSAKVDNSAWFGGDVKVPCTKTLVVANTDAGDELLEAVSTILLKNAPRIMGTGK
-                     "
-                     /product="6"
-                     /locus_tag="SAM_6"
-     CDS             4790..5131
-                     /translation="MHFHFHEPCLVCWCLCNQNQLAHADVLLSSERDPRSAQEDACCS
-                     FNASTREAPTLRSRCNLFLFFCIQKYHRYILPIGDEKTLSPSDPFDYSLKGVIPCHVI
-                     IALLLLLPSMV"
-                     /product="7"
-                     /locus_tag="SAM_7"
-     CDS             5083..6060
-                     /translation="MPRNYRPTAASAIDGLVAAHYSREEATMIRPFLPLHFDNFVALP
-                     SANYEFWSAYRAVQDALTYDRHKFRFYFWRDEEKSHIPNSPYVKMYYESPTFKAEFST
-                     IEFIRHFGRALFTDHGSDGLGRKLNYVNGGLRIKTRILRELFDEIGKETDNPAPWFNG
-                     YRRPTISVLIPPQPTVFTPREVLIAWRAGERVHRTLHGGRFDRKQHWINPMQDGWDIA
-                     RYLDLQAYRESKGFISSQEFHRLRSDVITVLTATDIFPAYTMYHRSLILNNHIFGESI
-                     DPTGYQRLDLPAVDNVHPIGYLTPKNNYSVTMPSDVFSMFTPDEWHAVL"
-                     /product="8"
-                     /locus_tag="SAM_8"
-     CDS             6145..6552
-                     /translation="MKHTTHQYLEFYSALEQGSIPTSINPGSEWEQHLFCDLIPLLTM
-                     HPHYQKWFESLEKVHAVGFRRGVDSPVVDTGINITRTECTSPTEKFINSFMKEMANAL
-                     ISRSHPYEELFAVLLDGIYTFQLKHYKTLSTLH"
-                     /product="9"
-                     /locus_tag="SAM_9"
+                     /product="1_1"
+                     /locus_tag="SAM_1_1"
 
 ORIGIN      
         1 atgaccacaa tcgcttacga cgggaaaacc ctcgcgggtg attcccaaac gacacaaggc
