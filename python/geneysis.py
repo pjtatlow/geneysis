@@ -165,11 +165,15 @@ elif args.task == "mark_golden": # marks any genes from a golden phage as "adjus
     print json.dumps(project)
 
 elif args.task == "adjust":
-    
+
     db = sqlite3.connect(args.wd + "db/geneysis.db")
+    cur = db.cursor()
     start_codons = ['ATG','GTG','TTG']
-    cluster = get_cluster(db,args.cluster_id)
-    adjust_cluster(db,cluster,start_codons)
+    stop_codons = ['TAG', 'TAA', 'TGA']
+    for row in db.execute("SELECT * from cluster"):
+        cluster_id = row[0]
+        cluster = get_cluster(db,cluster_id)
+        adjust_cluster(db,cluster, start_codons, stop_codons)
     db.close()
 
 else:
