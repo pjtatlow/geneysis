@@ -6,16 +6,15 @@ import numpy as np
 def loadProject(wd):
     project = {}
     with open("{d}project.json".format(d=wd),'r') as project_json:
-        project = json.load(project_json)   
+        project = json.load(project_json)
     return project
 
 def writeProject(wd,project):
     with open("{d}project.json".format(d=wd),'w') as project_json:
-        json.dump(project,project_json)  
+        json.dump(project,project_json)
 
 def connect_db(db_file):
     return sqlite3.connect(db_file)
-
 
 def create_db(db_file):
     if os.path.isfile(db_file):
@@ -41,10 +40,10 @@ def create_db(db_file):
             `start`	INTEGER NOT NULL,
             `orig_start` INTEGER NOT NULL,
             `end`	INTEGER NOT NULL,
-            `orig_end` INTEGER NOT NULL,            
+            `orig_end` INTEGER NOT NULL,
             `product`	TEXT NOT NULL,
             `note`	TEXT,
-            `locus_tag`	TEXT NOT NULL UNIQUE,
+            `locus_tag`	TEXT NOT NULL,
             `old_locus_tag`	TEXT,
             `translation`	TEXT NOT NULL,
             `cluster`	INTEGER,
@@ -86,14 +85,12 @@ def create_db(db_file):
     ''')
     return con
 
-
 def insert_phage(db, phage):
     cur = db.cursor()
     cur.execute("INSERT INTO `phage` (name,orig_name,organism,definition,golden,seq) VALUES(?,?,?,?,0,?)",
                 (phage.name, phage.name, phage.annotations['organism'], phage.description, str(phage.seq)))
     db.commit()
     return cur.lastrowid
-
 
 def insert_gene(db, gene, phage_id):
     cur = db.cursor()
@@ -120,20 +117,17 @@ def insert_gene(db, gene, phage_id):
     db.commit()
     return cur.lastrowid
 
-
 def insert_blastp_hits(db, hits):
     cur = db.cursor()
     cur.executemany("INSERT INTO `blastp` (query_id,subject_id,e_value,query_start,subject_start,percent_ident) "
                     "VALUES(?,?,?,?,?,?)", hits)
     db.commit()
 
-
 def insert_clustalo_percents(db, query, subject, identity):
     cur = db.cursor()
     cur.execute("INSERT INTO `clustalo` (query_id,subject_id,percent_ident) "
                 "VALUES(?,?,?)", (query, subject, identity))
     db.commit()
-
 
 def get_phage(db, id):
     result = db.execute("SELECT * from `phage` where id = " + str(id))
@@ -149,7 +143,6 @@ def get_phage(db, id):
         phage['golden'] = int(row[5])
         phage['seq'] = row[6]
     return phage
-
 
 def get_gene(db, id):
     result = db.execute("SELECT * from `gene` where id = " + str(id))
@@ -179,9 +172,8 @@ def get_gene(db, id):
         if row[13] == 0:
             gene['rev_comp'] = False
         else:
-            gene['rev_comp'] = True            
+            gene['rev_comp'] = True
     return gene
-
 
 def get_all_genes(db):
     result = db.execute("SELECT * from `gene`")
@@ -210,10 +202,9 @@ def get_all_genes(db):
         if row[13] == 0:
             gene['rev_comp'] = False
         else:
-            gene['rev_comp'] = True                      
+            gene['rev_comp'] = True
         genes.append(gene)
     return genes
-
 
 def get_gene_ids(db):
     result = db.execute("SELECT id from `gene` ORDER BY id")
@@ -226,7 +217,6 @@ def get_gene_ids(db):
     '''
     return ids
 
-
 def get_blastp_hits(db, id, args):
 
     result = db.execute("SELECT * from `blastp` where query_id = %d and e_value <= %s" %
@@ -238,7 +228,7 @@ def get_blastp_hits(db, id, args):
         hits.append(hit)
     return hits
 
-def get_all_blastp_hits(db, id, args):
+def get_all_blastp_hits(db, id):
 
     result = db.execute("SELECT * from `blastp` where query_id = %d" %
                         (id))
@@ -249,7 +239,6 @@ def get_all_blastp_hits(db, id, args):
         hits.append(hit)
     return hits
 
-
 def get_clustalo_hits(db, id, args):
     result = db.execute(
         "SELECT * from `clustalo` where query_id = %d or subject_id = %d and percent_ident >= %f" % (id, id, args.clustalo_cutoff))
@@ -259,13 +248,11 @@ def get_clustalo_hits(db, id, args):
         hits.append(hit)
     return hits
 
-
 def get_all_hits(db, id, args):
     hits = get_clustalo_hits(db, id, args)
     for hit in get_blastp_hits(db, id, args):
         hits.append(hit)
     return hits
-
 
 #creates a new cluster with a given name
 def create_cluster(db, name):
@@ -274,7 +261,6 @@ def create_cluster(db, name):
     db.commit()
     return cur.lastrowid
 
-
 #sets the cluster for a gene
 def update_gene_cluster(db, gene_id, cluster_id):
     cur = db.cursor()
@@ -282,33 +268,30 @@ def update_gene_cluster(db, gene_id, cluster_id):
                 (cluster_id, gene_id))
     db.commit()
 
-
 # gets all gene id's in a given cluster
 def get_cluster_genes(db, cluster_id):
     result = db.execute("SELECT id from `gene` where cluster = %d" % cluster_id)
     cluster = [row[0] for row in result]
     return cluster
 
-
 #gets all the information about each gene in a cluster
-def get_cluster(db,cluster_id,args):
-    result = db.execute("Select id from `gene` where cluster = %d" % cluster_id)
+def get_cluster(db,cluster_id):
+    result = db.execute("SELECT id from `gene` where cluster = %d" % cluster_id)
     cluster = []
     for row in result:
         gene = get_gene(db,row[0])
         #gene['hits'] = get_all_hits(db,gene['id'],args)
         # USE ONLY THE BLASTP HITS
-        gene['hits'] = get_all_blastp_hits(db,gene['id'],args)
+        gene['hits'] = get_all_blastp_hits(db,gene['id'])
         cluster.append(gene)
     return cluster
-
 
 # returns id of closest cluster, or id of newly created cluster
 def get_closest_cluster(db, gene_id, args, i):
     close_clusters = {}
     hits = get_all_hits(db, gene_id, args)
     checked = []
-# go through all hits and if any of them are already in a cluster, it adds the cluster to the "close_clusters" dictionary
+    # go through all hits and if any of them are already in a cluster, it adds the cluster to the "close_clusters" dictionary
     for hit in hits:
         if hit['subject_id'] != gene_id:
             hit_id = hit['subject_id']
@@ -324,7 +307,7 @@ def get_closest_cluster(db, gene_id, args, i):
                 else:
                     close_clusters[hit_gene['cluster']].append(hit['ident'])
 
-    if len(close_clusters.keys()) > 0: 
+    if len(close_clusters.keys()) > 0:
         closest_cluster = -1
         closest_identity = 0
         for cluster_id in close_clusters.keys():
@@ -355,31 +338,260 @@ def get_golden_genes(golden_phages,cluster):
             golden_ids[golden_number].append(gene['id'])
     return golden_ids
 
-#makes the best possible adjustments for a given cluster, aligning any genes that do not belong to 
-def adjust_cluster(db,cluster,start_codons):
+#makes the best possible adjustments for a given cluster, aligning any genes that do not belong to
+def adjust_cluster(db,cluster,start_codons,stop_codons):
     #first we need to make a list of all the golden phage proteins that are in this create_cluster
     golden_phages = get_golden_phages(db)
-    golden_genes = get_golden_genes(golden_phages,cluster) # golden genes is a dictionary of lists
-    #keys corrospond to the phage's "goldenness" and values in the list are all the genes from that phage
-    
+    golden_genes = get_golden_genes(golden_phages, cluster)
+
+    revcomp_start_codons = ['CAT', 'CAC', 'CAA']
+    revcomp_stop_codons = ['CTA', 'TTA', 'TCA']
+
     if len(golden_genes) == 0: #make sure there is at least one gene from the golden phage in the cluster
         return
-    
+
     for gene in cluster:
-        if not gene['adjusted'] and gene['phage_id'] != golden_phage_id: # only adjust non-golden genes that have not been adjusted
-            golden_hit = None
-            for hit in gene['hits']: # find the closest golden gene blastp his
-                if hit['type'] == "blastp" and hit['subject_id'] in golden_genes: # make sure we're dealing with a blastp hit is to a golden gene
-                    if golden_hit is None: # first golden gene blastp hit
-                        golden_hit = hit
-                    elif hit['e_value'] < golden_hit['e_value']: # if the evalue of this hit is smaller than the best one so far, then this is out new best one
-                        golden_hit = hit
-            golden_start = golden_hit['subject_start']
-            gene_start = golden_hit['query_start']
-            
-            if gene_start == 1: #our gene is too short and we need to move the start upstream
-                None
-            elif golden_start == 1: #our gene is too long and we need to trim it down
-                None
-            else: # right now we do nothing...
-                None
+        if gene['phage_id'] not in golden_phages and gene['adjusted'] == 0:
+            potentialStarts = [] #List to iterate instead of set type# Because if we have muliple golds we will have many different starts to try?
+            codonShift = []
+            farCodonShift = None
+            closeCodonShift = None
+            print
+            print "New Gene"
+            for index, gold_ids in enumerate(golden_genes.values()):
+                for gold_id in gold_ids:
+                    blastp_hit = None
+                    for hit in gene['hits']: #find hit in gene for that gold_id
+                        if hit['subject_id'] == gold_id:
+                            blastp_hit = hit
+                            break
+                    if blastp_hit is not None: # if we found a hit for that gene, continue
+                        #print "Gene", gene['id'], "and gene", gold_id, "has hit", blastp_hit
+                        golden_start = blastp_hit['subject_start']
+                        gene_start = blastp_hit['query_start']
+
+                        # our gene is too short and we need to move the start upstream
+                        if gene_start == 1 and golden_start == 1:
+                            print "They are already perfectly aligned!"
+                        elif gene_start == 1 and blastp_hit['ident'] > 50:
+                            print "Too Short"
+                            ideal_move_distance = np.abs(golden_start - gene_start)
+                            newCloseStart, newFarStart, farCodonShift, closeCodonShift = tooShort(db, gene, ideal_move_distance, start_codons, stop_codons, revcomp_start_codons, revcomp_stop_codons)
+                            if newCloseStart != None:
+                                potentialStarts.append(newCloseStart)
+                                codonShift.append(closeCodonShift)
+                            if newFarStart != None:
+                                potentialStarts.append(newFarStart)
+                                codonShift.append(farCodonShift)
+                        # our gene is too long and we need to trim it down
+                        elif golden_start == 1 and blastp_hit['ident'] > 50:
+                            print "Too Long"
+                            ideal_move_distance = np.abs(gene_start - golden_start)
+                            newCloseStart, newFarStart, farCodonShift, closeCodonShift = tooLong(db, gene, ideal_move_distance, start_codons, stop_codons, revcomp_start_codons,revcomp_stop_codons)
+                            if newCloseStart != None:
+                                potentialStarts.append(newCloseStart)
+                                codonShift.append(closeCodonShift)
+                            if newFarStart != None:
+                                potentialStarts.append(newFarStart)
+                                codonShift.append(farCodonShift)
+                        # right now we do nothing...
+                    else:
+                        print "Neither one starts at 1..."
+                else:
+                    print "Gene", gene['id'], "has no blastp hit for golden gene", gold_id, gene['hits']
+
+            if potentialStarts: # if set is not empty
+                bestStart = findBestStart(db, gene, potentialStarts, ideal_move_distance, codonShift)
+                updateStart(db, gene['id'], bestStart, gene['rev_comp']) #Uncomment when ready
+
+def tooShort(db, gene, ideal_move_distance, start_codons, stop_codons, revcomp_start_codons, revcomp_stop_codons):
+    phage = get_phage(db, gene['phage_id'])
+    phageGenome = phage['seq']
+    currentStart = gene['start']
+    if not gene['rev_comp']:
+        print "Forward"
+        return tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons)
+    elif gene['rev_comp']:
+        print "Reverse Compliment"
+        return tooShortRevComp(db, gene, ideal_move_distance, revcomp_start_codons, revcomp_stop_codons)
+
+def tooShortRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    farCodonShift = None
+    closeCodonShift = None
+    closeStarts = {}
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['end'] + (3 * i) # increase our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart-3:currentStart]
+        ##codon = codon[::-1] # reverse the codon
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        if codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            farCodonShift = np.abs(gene['end'] - currentStart)
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            if not closeStarts:
+                closeBestGeneStart = currentStart
+                closeCodonShift = np.abs(gene['end'] - currentStart)
+                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
+            else:
+                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
+    if len(closeStarts) > 1:
+        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+    return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
+
+def tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    farCodonShift = None
+    closeCodonShift = None
+    closeStarts = {}
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['start'] - (3 * i) # decrease our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart:currentStart+3]
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        if codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            farCodonShift = np.abs(gene['start'] - currentStart)
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            if not closeStarts:
+                closeBestGeneStart = currentStart
+                closeCodonShift = np.abs(gene['start'] - currentStart)
+                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
+            else:
+                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
+    if len(closeStarts) > 1:
+        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+    return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
+
+def tooLong(db, gene, ideal_move_distance, start_codons, stop_codons,revcomp_start_codons,revcomp_stop_codons):
+    phage = get_phage(db, gene['phage_id'])
+    phageGenome = phage['seq']
+    currentStart = gene['start']
+    if not gene['rev_comp']:
+            print "Forward"
+            return tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons)
+    elif gene['rev_comp']:
+            print "Reverse Compliment"
+            return tooLongRevComp(db, gene, ideal_move_distance, revcomp_start_codons, revcomp_stop_codons)
+
+def tooLongRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    farCodonShift = None
+    closeCodonShift = None
+    closeStarts = {}
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['end'] - (3 * i) # decrease our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart-3:currentStart] # codon is going backward
+        ##codon = codon[::-1] # reverse the codon
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        if codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            farCodonShift = np.abs(gene['end'] - currentStart)
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            if not closeStarts:
+                closeBestGeneStart = currentStart
+                closeCodonShift = np.abs(gene['end'] - currentStart)
+                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
+            else:
+                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
+    if len(closeStarts) > 1:
+        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+    return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
+
+def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
+    # Init bestGeneStart
+    farBestGeneStart = None
+    closeBestGeneStart = None
+    farCodonShift = None
+    closeCodonShift = None
+    closeStarts = {}
+    # Run through all the potential starts
+    for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
+        currentStart = gene['start'] + (3 * i) # increase our start 3 at a time
+        phage = get_phage(db, gene['phage_id'])
+        phageGenome = phage['seq']
+        codon = phageGenome[currentStart:currentStart+3] # codon is going forward
+
+        if codon in stop_codons:
+            print "Found stop codon at {}".format(currentStart)
+            break
+        if codon in start_codons and i > ideal_move_distance:
+            print "far"
+            farBestGeneStart = currentStart
+            farCodonShift = np.abs(gene['start'] - currentStart)
+            break
+        elif codon in start_codons and i <= ideal_move_distance:
+            print "on or before"
+            if not closeStarts:
+                closeBestGeneStart = currentStart
+                closeCodonShift = np.abs(gene['start'] - currentStart)
+                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
+            else:
+                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
+    if len(closeStarts) > 1:
+        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+    return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
+
+def getCloseStart(db, gene, ideal_move_distance, startsDict):
+    startsFound = []
+    startCodonShifts = []
+    for key in sorted(startsDict.keys()):
+        startsFound.append(key)
+        startCodonShifts.append(startsDict.get(key))
+
+    closeStart = findBestStart(db, gene, startsFound, ideal_move_distance, startCodonShifts)
+    codonShift = startsDict.get(closeStart)
+    return closeStart, codonShift
+
+def updateStart(db, gene_id, newStart, rev_comp):
+    cur = db.cursor()
+    if rev_comp == False:
+        cur.execute("UPDATE gene SET start = " + str(newStart) + ", adjusted = 1 WHERE id = " + str(gene_id))
+    else:
+        cur.execute("UPDATE gene SET end = " + str(newStart) + ", adjusted = 1 WHERE id = " + str(gene_id))
+    db.commit()
+
+def findBestStart(db, gene, potentialStarts, ideal_move_distance, codonShift):
+    if gene['rev_comp']:
+        check = gene['end']
+    else:
+        check = gene['start']
+    imd = ideal_move_distance
+
+    for item in potentialStarts:
+        if not isinstance(item, int):
+            potentialStarts.pop(potentialStarts.index(item))
+    diffs = [np.abs(s - imd) for s in codonShift]
+    return potentialStarts[np.argmin(diffs)]
