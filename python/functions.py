@@ -421,7 +421,6 @@ def tooShortRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
     closeBestGeneStart = None
     farCodonShift = None
     closeCodonShift = None
-    closeStarts = {}
     # Run through all the potential starts
     for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
         currentStart = gene['end'] + (3 * i) # increase our start 3 at a time
@@ -440,14 +439,8 @@ def tooShortRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
             break
         elif codon in start_codons and i <= ideal_move_distance:
             print "on or before"
-            if not closeStarts:
-                closeBestGeneStart = currentStart
-                closeCodonShift = np.abs(gene['end'] - currentStart)
-                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
-            else:
-                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
-    if len(closeStarts) > 1:
-        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+            closeBestGeneStart = currentStart
+            closeCodonShift = np.abs(gene['end'] - currentStart)
     return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
 
 def tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons):
@@ -456,7 +449,6 @@ def tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons):
     closeBestGeneStart = None
     farCodonShift = None
     closeCodonShift = None
-    closeStarts = {}
     # Run through all the potential starts
     for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
         currentStart = gene['start'] - (3 * i) # decrease our start 3 at a time
@@ -474,14 +466,8 @@ def tooShortForward(db, gene, ideal_move_distance, start_codons, stop_codons):
             break
         elif codon in start_codons and i <= ideal_move_distance:
             print "on or before"
-            if not closeStarts:
-                closeBestGeneStart = currentStart
-                closeCodonShift = np.abs(gene['start'] - currentStart)
-                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
-            else:
-                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
-    if len(closeStarts) > 1:
-        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+            closeBestGeneStart = currentStart
+            closeCodonShift = np.abs(gene['start'] - currentStart)
     return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
 
 def tooLong(db, gene, ideal_move_distance, start_codons, stop_codons,revcomp_start_codons,revcomp_stop_codons):
@@ -501,7 +487,6 @@ def tooLongRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
     closeBestGeneStart = None
     farCodonShift = None
     closeCodonShift = None
-    closeStarts = {}
     # Run through all the potential starts
     for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
         currentStart = gene['end'] - (3 * i) # decrease our start 3 at a time
@@ -520,14 +505,8 @@ def tooLongRevComp(db, gene, ideal_move_distance, start_codons, stop_codons):
             break
         elif codon in start_codons and i <= ideal_move_distance:
             print "on or before"
-            if not closeStarts:
-                closeBestGeneStart = currentStart
-                closeCodonShift = np.abs(gene['end'] - currentStart)
-                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
-            else:
-                closeStarts[currentStart] = np.abs(gene['end'] - currentStart)
-    if len(closeStarts) > 1:
-        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+            closeBestGeneStart = currentStart
+            closeCodonShift = np.abs(gene['end'] - currentStart)
     return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
 
 def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
@@ -536,7 +515,6 @@ def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
     closeBestGeneStart = None
     farCodonShift = None
     closeCodonShift = None
-    closeStarts = {}
     # Run through all the potential starts
     for i in xrange(1,ideal_move_distance*2): # doubled to we have equal search space on both sides
         currentStart = gene['start'] + (3 * i) # increase our start 3 at a time
@@ -554,26 +532,9 @@ def tooLongForward(db, gene, ideal_move_distance, start_codons, stop_codons):
             break
         elif codon in start_codons and i <= ideal_move_distance:
             print "on or before"
-            if not closeStarts:
-                closeBestGeneStart = currentStart
-                closeCodonShift = np.abs(gene['start'] - currentStart)
-                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
-            else:
-                closeStarts[currentStart] = np.abs(gene['start'] - currentStart)
-    if len(closeStarts) > 1:
-        closeBestGeneStart, closeCodonShift = getCloseStart(db, gene, ideal_move_distance, closeStarts)
+            closeBestGeneStart = currentStart
+            closeCodonShift = np.abs(gene['start'] - currentStart)
     return closeBestGeneStart, farBestGeneStart, farCodonShift, closeCodonShift
-
-def getCloseStart(db, gene, ideal_move_distance, startsDict):
-    startsFound = []
-    startCodonShifts = []
-    for key in sorted(startsDict.keys()):
-        startsFound.append(key)
-        startCodonShifts.append(startsDict.get(key))
-
-    closeStart = findBestStart(db, gene, startsFound, ideal_move_distance, startCodonShifts)
-    codonShift = startsDict.get(closeStart)
-    return closeStart, codonShift
 
 def updateStart(db, gene_id, newStart, rev_comp):
     cur = db.cursor()
