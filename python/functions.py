@@ -1,4 +1,10 @@
 from Bio import SeqIO
+from Bio.Seq import Seq, translate
+from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet.IUPAC import IUPACUnambiguousDNA, IUPACProtein
+from Bio.Blast import NCBIXML
+from Bio.Blast.Applications import NcbiblastpCommandline
 import sys, glob, os, sqlite3, subprocess
 import json
 import numpy as np
@@ -107,12 +113,12 @@ def insert_gene(db, gene, phage_id):
     if gene.strand == 1:
         cur.execute("INSERT INTO `gene` (phage_id,start,orig_start,end,orig_end,product,note,locus_tag,old_locus_tag,translation,adjusted,rev_comp) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,0,0)",
-                (phage_id, gene.location.start,gene.location.start, gene.location.end,gene.location.end, gene.qualifiers["product"][0],
+                (phage_id, gene.location.start,gene.location.start, gene.location.end,gene.location.end, gene.qualifiers["translation"][0],
                  note, gene.qualifiers["locus_tag"][0], old_locus, str(gene.qualifiers["translation"][0])))
     else:
         cur.execute("INSERT INTO `gene` (phage_id,start,orig_start,end,orig_end,product,note,locus_tag,old_locus_tag,translation,adjusted,rev_comp) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,0,1)",
-                (phage_id, gene.location.start,gene.location.start, gene.location.end,gene.location.end, gene.qualifiers["product"][0],
+                (phage_id, gene.location.start,gene.location.start, gene.location.end,gene.location.end, gene.qualifiers["translation"][0],
                  note, gene.qualifiers["locus_tag"][0], old_locus, str(gene.qualifiers["translation"][0])))
     db.commit()
     return cur.lastrowid
@@ -357,7 +363,7 @@ def adjust_cluster(db,cluster,start_codons,stop_codons):
             farCodonShift = None
             closeCodonShift = None
             print
-            print "New Gene"
+            print "New Gene ", gene['id']
             for index, gold_ids in enumerate(golden_genes.values()):
                 for gold_id in gold_ids:
                     blastp_hit = None
@@ -373,7 +379,8 @@ def adjust_cluster(db,cluster,start_codons,stop_codons):
                         # our gene is too short and we need to move the start upstream
                         if gene_start == 1 and golden_start == 1:
                             print "They are already perfectly aligned!"
-                        elif gene_start == 1 and blastp_hit['ident'] > 50:
+                            print(gene["id"])
+                        elif gene_start == 1 and blastp_hit['ident'] > 50 and blastp_hit['e_value'] < 1e-9:
                             print "Too Short"
                             ideal_move_distance = np.abs(golden_start - gene_start)
                             newCloseStart, newFarStart, farCodonShift, closeCodonShift = tooShort(db, gene, ideal_move_distance, start_codons, stop_codons, revcomp_start_codons, revcomp_stop_codons)
@@ -384,7 +391,7 @@ def adjust_cluster(db,cluster,start_codons,stop_codons):
                                 potentialStarts.append(newFarStart)
                                 codonShift.append(farCodonShift)
                         # our gene is too long and we need to trim it down
-                        elif golden_start == 1 and blastp_hit['ident'] > 50:
+                        elif golden_start == 1 and blastp_hit['ident'] > 50 and blastp_hit['e_value'] < 1e-9:
                             print "Too Long"
                             ideal_move_distance = np.abs(gene_start - golden_start)
                             newCloseStart, newFarStart, farCodonShift, closeCodonShift = tooLong(db, gene, ideal_move_distance, start_codons, stop_codons, revcomp_start_codons,revcomp_stop_codons)
@@ -395,12 +402,13 @@ def adjust_cluster(db,cluster,start_codons,stop_codons):
                                 potentialStarts.append(newFarStart)
                                 codonShift.append(farCodonShift)
                         # right now we do nothing...
+                        else:
+                            print "Neither one starts at 1..."
                     else:
-                        print "Neither one starts at 1..."
-                else:
-                    print "Gene", gene['id'], "has no blastp hit for golden gene", gold_id, gene['hits']
+                        print "Gene", gene['id'], "has no blastp hit for golden gene", gold_id, ##gene['hits']
 
             if potentialStarts: # if set is not empty
+                print(potentialStarts)
                 bestStart = findBestStart(db, gene, potentialStarts, ideal_move_distance, codonShift)
                 updateStart(db, gene['id'], bestStart, gene['rev_comp']) #Uncomment when ready
 
@@ -556,3 +564,141 @@ def findBestStart(db, gene, potentialStarts, ideal_move_distance, codonShift):
             potentialStarts.pop(potentialStarts.index(item))
     diffs = [np.abs(s - imd) for s in codonShift]
     return potentialStarts[np.argmin(diffs)]
+
+def fillGap(db, cluster, phage):
+        golden_phages = get_golden_phages(db)
+        golden_genes = get_golden_genes(golden_phages, cluster)
+
+        tempGB = open("gapGenes.gb", "w")
+        new_phage = get_phage(db, phage)
+        new_phage_seq = new_phage["seq"]
+        new_phage_seq = Seq(new_phage_seq, IUPACUnambiguousDNA())
+        record = SeqRecord(new_phage_seq, id = "0", name = "Temp_Genome", description = "Temp_file")
+
+        if len(golden_genes) == 0: #make sure there is at least one gene from the golden phage in the cluster
+            return
+
+        if len(cluster) == len(golden_genes):
+            for gene in cluster:
+                querySeq = gene["product"]
+                query = open("query.FASTA", "w")
+                query.write(">query\n{}".format(querySeq))
+                query.close()
+                frame1, frame2, frame3 = getReadingFrames(gene, db, phage)
+                print
+                print(gene["locus_tag"])
+
+                counter = 0
+                resultProtein = None
+                while counter < 3:
+                    if counter == 0:
+                        subjectProtein = str(frame1)
+                    elif counter == 1:
+                        subjectProtein = str(frame2)
+                    elif counter == 2:
+                        subjectProtein = str(frame3)
+                    subject = open("subject.FASTA", "w")
+                    subject.write(">subject\n{}".format(subjectProtein))
+                    subject.close()
+                    resultProtein = blastGap(gene, "query.FASTA", "subject.FASTA")
+                    if resultProtein != None:
+                        break
+                    else:
+                        counter += 1
+
+                numAminoAcids = len(resultProtein)
+                resultProtein = Seq(resultProtein, IUPACProtein())
+                newFeature = makeNewGene(numAminoAcids, resultProtein, frame1, frame2, frame3, gene, new_phage_seq)
+                print(newFeature)
+                record.features.append(newFeature)
+
+        SeqIO.write(record, tempGB, "genbank")
+        tempGB.close()
+
+        genome = SeqIO.read("gapGenes.gb", "genbank")
+        features = genome.features
+        for feature in features:
+            if feature.type == "CDS":
+                if feature.qualifiers['translation'][0] == '-':
+                    feature.qualifiers['translation'][0] = feature.qualifiers['translation'][0][1:]
+                gene_id = insert_gene(db, feature, phage)
+
+def blastGap(gene, query, subject):
+    e_value = 1e-5
+    gapBlast = NcbiblastpCommandline(query = query, subject = subject, outfmt=5, out='gap.xml')
+    stdout, stderr = gapBlast()
+    result_handle = open('gap.xml')
+    blast_record = NCBIXML.read(result_handle)
+    for alignment in blast_record.alignments:
+        for hsp in alignment.hsps:
+            if hsp.expect < e_value:
+                print("****ALIGNMENT****")
+                print("sequence:", alignment.title)
+                print("length", alignment.length)
+                print("e-value:", hsp.expect)
+                print(hsp.query[0:75] + "...")
+                print(hsp.match[0:75] + "...")
+                print(hsp.sbjct[0:75] + "...")
+                return hsp.sbjct
+
+def getReadingFrames(gene, db, phage):
+    if gene['rev_comp'] != 1:
+        new_phage = get_phage(db, phage)
+        new_phage_seq = new_phage['seq']
+        seq = Seq(new_phage_seq, IUPACUnambiguousDNA())
+        frame1 = seq.translate()
+        frame2 = seq[1:(len(seq) - 1)]
+        frame2 = frame2.translate()
+        frame3 = seq[2:(len(seq) - 1)]
+        frame3 = frame3.translate()
+    else:
+        new_phage = get_phage(db, phage)
+        new_phage_seq = new_phage['seq']
+        seq = Seq(new_phage_seq, IUPACUnambiguousDNA())
+        seq = seq.reverse_complement()
+        frame1 = seq.translate()
+        frame2 = seq[1:(len(seq) - 1)]
+        frame2 = frame2.translate()
+        frame3 = seq[2:(len(seq) - 1)]
+        frame3 = frame3.translate()
+    return frame1, frame2, frame3
+
+def makeNewGene(length, protein, frame1, frame2, frame3, gene, seq):
+    locusTag = "LG_{}".format(gene["locus_tag"])
+    counter = 0
+    while counter < 3:
+        if counter == 0:
+            start = frame1.find(protein)
+            if start != -1:
+                break
+            else:
+                counter += 1
+        elif counter == 1:
+            start = frame2.find(protein)
+            if start != -1:
+                break
+            else:
+                counter += 1
+        elif counter == 2:
+            start = frame3.find(protein)
+            if start != -1:
+                break
+            else:
+                counter += 1
+    if start != -1:
+        nucStart = counter + 3 * start
+        nucEnd = nucStart + 3 * length
+        if gene["rev_comp"] == 1:
+            geneSeq = seq[nucStart:nucEnd]
+            geneSeq = geneSeq.reverse_complement()
+            seq = seq.reverse_complement()
+            nucStart = seq.find(geneSeq)
+            nucEnd = nucStart + 3 * length
+            newFeature = SeqFeature(FeatureLocation(nucStart, nucEnd, strand = -1), type = "CDS")
+            newFeature.qualifiers["locus_tag"] = locusTag
+            newFeature.qualifiers["translation"] = protein
+        else:
+            newFeature = SeqFeature(FeatureLocation(nucStart, nucEnd, strand = 1), type = "CDS")
+            newFeature.qualifiers["locus_tag"] = locusTag
+            newFeature.qualifiers["translation"] = protein
+    return newFeature
