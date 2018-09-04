@@ -3,6 +3,11 @@ from functions import *
 import argparse
 import datetime
 import time
+from Bio import SeqIO
+from Bio.Seq import Seq, translate
+from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet.IUPAC import IUPACUnambiguousDNA
+from Bio.SeqFeature import FeatureLocation, SeqFeature
 
 parser = argparse.ArgumentParser()
 parser.add_argument("task", help="Specify which task you want run")
@@ -11,6 +16,8 @@ parser.add_argument("--file", help="Genbank file to work with")
 parser.add_argument("--clustalo_cutoff", help="Minimum percent identity when clustering", default=32.5)
 parser.add_argument("--blastp_cutoff", help="Minimum e-value when clustering", default=1e-50)
 parser.add_argument("--golden_phage", help="Phage ID that represents the 'correct' phage.")
+parser.add_argument("--genbank_file", help="Name of new genbank file")
+parser.add_argument("--annotate_phage", help="Phage ID that represents phage getting annotated")
 
 args = parser.parse_args()
 
@@ -33,7 +40,7 @@ if args.task == "create":
     writeProject(args.wd, project)
 
     print json.dumps(project)
-    
+
 elif args.task == "import":
 
     if args.file is None:
@@ -52,18 +59,18 @@ elif args.task == "import":
 
         for gene in phage.features:
             if gene.type == "CDS":
-                if gene.qualifiers['translation'][0][0] == '-':
+                if gene.qualifiers['translation'][0] == '-':
                     gene.qualifiers['translation'][0] = gene.qualifiers['translation'][0][1:]
                 gene_id = insert_gene(db, gene, phage_id)
-                
+
         project = loadProject(args.wd)
- 
+
         project['phages'].append({"name":phage.name,"golden":False,"id":phage_id})
-        
+
         writeProject(args.wd, project)
-        
+
         print json.dumps(project)
-        
+
     db.close()
 
 elif args.task == "create_fasta":
@@ -107,12 +114,11 @@ elif args.task == "blast":
     db.close()
     print "Blast complete"
 
-
 elif args.task == "clustalo":
     print "Running clustal-omega"
 
-    # os.system("clustalo -i " + args.wd + "fasta/geneysis.fasta --outfmt=clu --distmat-out=" + args.wd +
-    #           "clustalo/percent.id --full --percent-id --force -o " + args.wd + "clustalo/align.clu -v")
+    os.system("clustalo -i " + args.wd + "fasta/geneysis.fasta --outfmt=clu --distmat-out=" + args.wd +
+        "clustalo/percent.id --full --percent-id --force -o " + args.wd + "clustalo/align.clu -v")
 
     db = connect_db(args.wd + "db/geneysis.db")
 
@@ -126,7 +132,7 @@ elif args.task == "clustalo":
                     insert_clustalo_percents(db, gene, x, line[x])
 
     db.close()
-    
+
     print "Finished clustal-omega"
 
 elif args.task == "cluster":
@@ -149,7 +155,7 @@ elif args.task == "mark_golden": # marks any genes from a golden phage as "adjus
     db = sqlite3.connect(args.wd + "db/geneysis.db")
     db.execute("UPDATE `gene` set adjusted = 1 where phage_id = " + args.golden_phage)
     nextGolden = db.execute("SELECT COUNT(*) FROM `phage` where golden != 0").fetchone()[0] + 1
-    db.execute("UPDATE `phage` set golden = "+ str(nextGolden) +" where id = " + args.golden_phage)  
+    db.execute("UPDATE `phage` set golden = "+ str(nextGolden) +" where id = " + args.golden_phage)
     db.commit()
     db.close()
 
@@ -175,6 +181,60 @@ elif args.task == "adjust":
         cluster = get_cluster(db,cluster_id)
         adjust_cluster(db,cluster, start_codons, stop_codons)
     db.close()
+
+elif args.task == "fill_gaps":
+    if args.annotate_phage is None:
+        print >> sys.stderr, "Annotate Phage ID required."
+        sys.exit(1)
+
+    db = sqlite3.connect(args.wd + "db/geneysis.db")
+    cur = db.cursor()
+
+    for row in db.execute("SELECT * from cluster"):
+        cluster_id = row[0]
+        cluster = get_cluster(db,cluster_id)
+        annotatePhage = args.annotate_phage
+        fillGap(db, cluster, annotatePhage)
+    db.close()
+
+elif args.task == "genbank":
+
+    db = sqlite3.connect(args.wd + "db/geneysis.db")
+    cur = db.cursor()
+    outputFile = open(args.genbank_file, "w")
+    for row in db.execute("SELECT * from phage"):
+        if row[5] == 0:
+            seq = row[6]
+            phageID = row[0]
+            phageName = row[1]
+    seq = Seq(seq, IUPACUnambiguousDNA())
+    record = SeqRecord(seq, id = "N/A", name = phageName, description = "N/A")
+    db.row_factory = sqlite3.Row
+    cur = db.execute("SELECT * from 'gene'")
+    rows = cur.fetchall()
+    for row in rows:
+        if row[1] == phageID:
+            start = row[2]
+            stop = row[4]
+            geneName = row[8]
+            if row[13] == 0:
+                strand = 1
+            else:
+                strand = -1
+            seqLoc = FeatureLocation(start, stop, strand)
+            geneSeq = seq[seqLoc.start:seqLoc.end]
+            product = row[6]
+            quals = {}
+            quals["locus_tag"] = geneName
+            quals["translation"] = product
+            newFeature = SeqFeature(seqLoc, type = "CDS", qualifiers = quals)
+            print(newFeature)
+            record.features.append(newFeature)
+    SeqIO.write(record, outputFile, "genbank")
+
+    outputFile.close()
+
+
 
 else:
     print args.task, "not a valid task!"
