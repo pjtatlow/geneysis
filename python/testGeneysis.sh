@@ -28,5 +28,9 @@ python geneysis.py cluster --wd ~/Desktop/geneysis
 python geneysis.py mark_golden --wd ~/Desktop/geneysis --golden_phage 1
 python geneysis.py mark_golden --wd ~/Desktop/geneysis --golden_phage 3
 
+python geneysis.py adjust --wd ~/Desktop/geneysis
+python geneysis.py fill_gaps --wd ~/Desktop/geneysis --annotate_phage 2
+python geneysis.py genbank --wd ~/Desktop/geneysis --genbank_file ~/Desktop/New_Genbank.gb
+
 # output the new genbank file
 #python geneysis.py to_genbank
